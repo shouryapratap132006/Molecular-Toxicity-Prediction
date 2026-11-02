@@ -200,7 +200,7 @@ python -m pytest tests/ -v --run-real-data
 
 ## Team Roles and Responsibilities
 
-### Student 1 — Amogha Raj Sindur · Dataset, Preprocessing and EDA
+### Student 1 — Amogha Raj Sandur · Dataset, Preprocessing and EDA
 **Data owner**
 
 **Responsibilities**
