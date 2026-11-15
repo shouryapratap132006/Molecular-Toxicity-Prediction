@@ -7,6 +7,7 @@ __pycache__/
 .DS_Store
 data/raw/*
 data/processed/*
+!data/processed/scaffold_split_indices.json
 results/experiment_logs/*
 results/figures/eda/*
 results/models/
