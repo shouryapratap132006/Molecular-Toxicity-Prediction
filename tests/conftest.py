@@ -1,4 +1,8 @@
 """Offline, synthetic Tox21 fixtures; no real dataset assumptions."""
+import os
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 from pathlib import Path
 import gzip
 import hashlib
