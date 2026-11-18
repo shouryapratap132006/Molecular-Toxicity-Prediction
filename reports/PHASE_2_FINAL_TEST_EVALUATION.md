@@ -324,3 +324,4 @@ In accordance with Student 4 contribution guidelines, exactly eight meaningful, 
 ## 15. Final Declaration
 
 I confirm that this report reflects the actual, measured, and uncorrupted outputs of Student 3's best-trained `MolecularGNN` on the quarantined Tox21 test set ($N=783$). No metrics were fabricated, no test labels were leaked, and the checkpoint SHA-256 remained intact throughout all operations.
+
