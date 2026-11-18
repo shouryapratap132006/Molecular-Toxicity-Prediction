@@ -90,3 +90,64 @@ def train_one_epoch(
 
     epoch_loss = total_weighted_loss / max(total_valid_labels, 1)
     return float(epoch_loss), total_valid_labels
+
+
+def evaluate(
+    model: nn.Module,
+    dataloader: Iterable[Mapping[str, Any]],
+    device: torch.device,
+    loss_fn: Optional[Callable[..., torch.Tensor]] = None,
+) -> tuple[float, int]:
+    """Evaluate model on a dataset partition (e.g. validation).
+
+    Guarantees:
+    - Model is placed in eval() mode.
+    - Wrapped in torch.no_grad() to prevent gradient tracking and memory leaks.
+    - Loss is aggregated proportionally across all observed labels.
+
+    Args:
+        model: MolecularGNN instance.
+        dataloader: Iterable yielding graph batch dictionaries.
+        device: Target compute device.
+        loss_fn: Loss function (defaults to masked_bce_loss).
+
+    Returns:
+        tuple of (mean_validation_loss, total_valid_labels_evaluated)
+    """
+    model.eval()
+    if loss_fn is None:
+        loss_fn = masked_bce_loss
+
+    total_weighted_loss = 0.0
+    total_valid_labels = 0
+
+    with torch.no_grad():
+        for batch in dataloader:
+            logits = model(batch)
+            y = batch["y"]
+            mask = batch["mask"]
+
+            if isinstance(y, np.ndarray):
+                y_t = torch.from_numpy(y).to(device=device)
+            else:
+                y_t = y.to(device=device)
+
+            if isinstance(mask, np.ndarray):
+                mask_t = torch.from_numpy(mask).to(device=device)
+            else:
+                mask_t = mask.to(device=device)
+
+            valid_mask = mask_t.bool() & torch.isfinite(y_t)
+            batch_valid_count = int(valid_mask.sum().item())
+
+            if batch_valid_count == 0:
+                continue
+
+            loss = loss_fn(logits, y, mask)
+            if torch.isfinite(loss):
+                total_weighted_loss += loss.item() * batch_valid_count
+                total_valid_labels += batch_valid_count
+
+    val_loss = total_weighted_loss / max(total_valid_labels, 1)
+    return float(val_loss), total_valid_labels
+
