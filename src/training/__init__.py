@@ -16,6 +16,7 @@ from src.training.losses import (
     compute_endpoint_pos_weights,
     masked_bce_loss,
 )
+from src.training.metrics import TrainingLogger
 from src.training.reproducibility import get_device, get_system_info, set_seed
 from src.training.scheduler import build_scheduler, step_scheduler
 from src.training.trainer import evaluate, train_one_epoch
@@ -24,6 +25,7 @@ __all__ = [
     "EarlyStopping",
     "MaskedBCELoss",
     "TrainingConfig",
+    "TrainingLogger",
     "build_scheduler",
     "compute_endpoint_pos_weights",
     "evaluate",
