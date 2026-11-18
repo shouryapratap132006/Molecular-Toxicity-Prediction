@@ -6,7 +6,7 @@ that missing labels never contribute to gradient updates.
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Any, Mapping, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -98,3 +98,55 @@ class MaskedBCELoss(nn.Module):
         mask: Union[torch.Tensor, np.ndarray],
     ) -> torch.Tensor:
         return masked_bce_loss(logits, targets, mask, pos_weight=self.pos_weight)
+
+
+def compute_endpoint_pos_weights(
+    train_dataset_or_targets: Any,
+    num_tasks: int = 12,
+    max_weight: float = 50.0,
+) -> torch.Tensor:
+    """Compute per-endpoint positive class weighting based strictly on training labels.
+
+    Ratio formula:
+        pos_weight_j = clamp(N_neg,j / N_pos,j, max=max_weight)
+
+    Guarantees:
+    - Missing (NaN) labels are completely excluded.
+    - Endpoints with 0 positive or 0 negative samples default to 1.0.
+    - Weights are upper-bounded by max_weight to prevent optimization instability.
+
+    Args:
+        train_dataset_or_targets: GraphDataset, list of graphs, or 2D label array [N, num_tasks].
+        num_tasks: Expected number of endpoints (default 12).
+        max_weight: Maximum allowable weight clamp.
+
+    Returns:
+        torch.Tensor of shape [num_tasks] with dtype float32.
+    """
+    if hasattr(train_dataset_or_targets, "__getitem__") and hasattr(train_dataset_or_targets, "__len__"):
+        first_item = train_dataset_or_targets[0]
+        if isinstance(first_item, Mapping) and "y" in first_item:
+            y_arr = np.stack([item["y"] for item in train_dataset_or_targets])
+        else:
+            y_arr = np.asarray(train_dataset_or_targets)
+    else:
+        y_arr = np.asarray(train_dataset_or_targets)
+
+    if y_arr.ndim != 2:
+        raise ValueError(f"Expected 2D label array, got shape {y_arr.shape}")
+
+    weights = np.ones(num_tasks, dtype=np.float32)
+    for j in range(min(num_tasks, y_arr.shape[1])):
+        col = y_arr[:, j]
+        valid = col[np.isfinite(col)]
+        n_pos = np.sum(valid == 1.0)
+        n_neg = np.sum(valid == 0.0)
+
+        if n_pos > 0 and n_neg > 0:
+            ratio = float(n_neg / n_pos)
+            weights[j] = min(ratio, max_weight)
+        else:
+            weights[j] = 1.0
+
+    return torch.from_numpy(weights).to(dtype=torch.float32)
+

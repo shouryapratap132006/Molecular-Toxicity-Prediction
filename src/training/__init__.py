@@ -6,18 +6,26 @@ and Molecular Graph Networks.
 
 from src.training.config import TrainingConfig
 from src.training.early_stopping import EarlyStopping
-from src.training.losses import MaskedBCELoss, masked_bce_loss
+from src.training.losses import (
+    MaskedBCELoss,
+    compute_endpoint_pos_weights,
+    masked_bce_loss,
+)
 from src.training.reproducibility import get_device, get_system_info, set_seed
+from src.training.scheduler import build_scheduler, step_scheduler
 from src.training.trainer import evaluate, train_one_epoch
 
 __all__ = [
     "EarlyStopping",
     "MaskedBCELoss",
     "TrainingConfig",
+    "build_scheduler",
+    "compute_endpoint_pos_weights",
     "evaluate",
     "get_device",
     "get_system_info",
     "masked_bce_loss",
     "set_seed",
+    "step_scheduler",
     "train_one_epoch",
 ]
