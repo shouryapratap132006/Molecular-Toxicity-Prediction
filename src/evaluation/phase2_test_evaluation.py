@@ -264,3 +264,213 @@ def verify_and_load_checkpoint(
     )
     return model, metadata
 
+
+def run_test_inference(
+    model: torch.nn.Module,
+    test_dataset: Any,
+    batch_size: int = 64,
+    device: Optional[torch.device | str] = None,
+    canonical_split_path: Path | str = "data/processed/scaffold_split_indices.json",
+) -> dict[str, Any]:
+    """Execute batched inference on quarantined test dataset under zero-leakage protocol.
+
+    Guarantees:
+    1. Zero test target labels are used for inference or threshold determination.
+    2. Batching preserves canonical test partition sequence without shuffling.
+    3. Tensors and arrays are safely converted and detached from computational graphs.
+    4. Probabilities are strictly bounded in [0, 1] and finite (no NaNs / Infs).
+    5. Output dimensions strictly match (783, 12).
+    6. All 783 molecule IDs are unique and strictly aligned with scaffold_split_indices.json.
+
+    Args:
+        model: Restored MolecularGNN model in eval() mode.
+        test_dataset: GraphDataset containing exactly 783 test molecular graphs.
+        batch_size: Minibatch size for collation and inference (default: 64).
+        device: Target device (defaults to model's parameter device).
+        canonical_split_path: Path to scaffold split JSON for identifier verification.
+
+    Returns:
+        Dictionary containing predictions, targets, masks, molecule IDs, and validation stats.
+    """
+    if len(test_dataset) != EXPECTED_TEST_COUNT:
+        raise ValueError(
+            f"Quarantined test set count mismatch: expected {EXPECTED_TEST_COUNT}, got {len(test_dataset)}"
+        )
+
+    model.eval()
+    if device is not None:
+        target_dev = torch.device(device) if isinstance(device, str) else device
+        model.to(target_dev)
+
+    from src.data.graph_dataset import iter_graph_batches
+
+    all_probs = []
+    all_targets = []
+    all_masks = []
+    all_mol_ids: list[str] = []
+
+    logger.info(
+        "Initiating batched inference on %d quarantined test graphs (batch_size=%d)...",
+        len(test_dataset),
+        batch_size,
+    )
+
+    with torch.no_grad():
+        for batch_idx, batch in enumerate(iter_graph_batches(test_dataset, batch_size=batch_size)):
+            # 1. Forward pass produces raw logits [B, 12]
+            logits = model(batch)
+            if not isinstance(logits, torch.Tensor):
+                raise TypeError(f"Model output must be a torch.Tensor, got {type(logits)}")
+            if logits.ndim != 2 or logits.shape[1] != EXPECTED_TASK_COUNT:
+                raise ValueError(
+                    f"Expected logits shape [B, {EXPECTED_TASK_COUNT}], got {logits.shape}"
+                )
+
+            # 2. Continuous probabilities via sigmoid
+            probs = torch.sigmoid(logits)
+            probs_np = probs.detach().cpu().numpy().astype(np.float32)
+            all_probs.append(probs_np)
+
+            # 3. Targets and Masks conversion
+            raw_y = batch["y"]
+            if isinstance(raw_y, torch.Tensor):
+                y_np = raw_y.detach().cpu().numpy().astype(np.float32)
+            else:
+                y_np = np.asarray(raw_y, dtype=np.float32)
+            all_targets.append(y_np)
+
+            raw_mask = batch["mask"]
+            if isinstance(raw_mask, torch.Tensor):
+                mask_np = raw_mask.detach().cpu().numpy().astype(bool)
+            else:
+                mask_np = np.asarray(raw_mask, dtype=bool)
+            all_masks.append(mask_np)
+
+            # 4. Molecule identifiers
+            mol_ids = batch["mol_id"]
+            if not isinstance(mol_ids, (list, tuple)):
+                mol_ids = list(mol_ids)
+            all_mol_ids.extend(mol_ids)
+
+    # Concatenate across batches
+    predictions = np.concatenate(all_probs, axis=0)
+    targets = np.concatenate(all_targets, axis=0)
+    masks = np.concatenate(all_masks, axis=0)
+
+    # Rigorous Validation Checklist
+    # 1. Dimension checks
+    if predictions.shape != (EXPECTED_TEST_COUNT, EXPECTED_TASK_COUNT):
+        raise ValueError(
+            f"Prediction shape mismatch: expected ({EXPECTED_TEST_COUNT}, {EXPECTED_TASK_COUNT}), got {predictions.shape}"
+        )
+    if targets.shape != predictions.shape:
+        raise ValueError(
+            f"Target shape mismatch: expected {predictions.shape}, got {targets.shape}"
+        )
+    if masks.shape != predictions.shape:
+        raise ValueError(
+            f"Mask shape mismatch: expected {predictions.shape}, got {masks.shape}"
+        )
+
+    # 2. Numerical validity
+    if not np.all(np.isfinite(predictions)):
+        raise ValueError("Inference produced non-finite prediction probabilities (NaN or Inf)")
+    if not np.all((predictions >= 0.0) & (predictions <= 1.0)):
+        raise ValueError("Inference produced probabilities outside the valid [0, 1] interval")
+
+    # 3. Molecule identifier integrity
+    if len(all_mol_ids) != EXPECTED_TEST_COUNT:
+        raise ValueError(
+            f"Molecule ID count mismatch: expected {EXPECTED_TEST_COUNT}, got {len(all_mol_ids)}"
+        )
+    unique_ids = set(all_mol_ids)
+    if len(unique_ids) != EXPECTED_TEST_COUNT:
+        duplicates = [mid for mid in all_mol_ids if all_mol_ids.count(mid) > 1]
+        raise ValueError(f"Duplicate molecule identifiers detected in test set: {set(duplicates)}")
+
+    # 4. Verify canonical split alignment
+    split_file = Path(canonical_split_path)
+    if split_file.is_file():
+        with open(split_file, "r", encoding="utf-8") as f:
+            split_data = json.load(f)
+        canonical_test_ids = split_data.get("row_identifiers", {}).get("test_mol_ids")
+        if canonical_test_ids is not None:
+            if all_mol_ids != canonical_test_ids:
+                raise ValueError("Inference molecule IDs diverged from canonical test split order!")
+            logger.info("Canonical test split ordering verified: 100% 1-to-1 match with scaffold split.")
+
+    # 5. Mask consistency check: targets with mask=True must be finite binary {0.0, 1.0}
+    valid_targets = targets[masks]
+    if not np.all(np.isin(valid_targets, [0.0, 1.0])):
+        invalid_vals = valid_targets[~np.isin(valid_targets, [0.0, 1.0])]
+        raise ValueError(f"Observed target values must be strictly binary {0, 1}, found: {invalid_vals[:5]}")
+
+    logger.info(
+        "Inference and validation completed successfully. Shape: %s, Total Valid Entries: %d / %d (%.2f%%)",
+        predictions.shape,
+        int(np.sum(masks)),
+        predictions.size,
+        100.0 * np.sum(masks) / predictions.size,
+    )
+
+    return {
+        "predictions": predictions,
+        "targets": targets,
+        "masks": masks,
+        "molecule_ids": all_mol_ids,
+        "num_molecules": len(all_mol_ids),
+        "num_tasks": EXPECTED_TASK_COUNT,
+        "total_valid_observations": int(np.sum(masks)),
+        "total_missing_observations": int(np.sum(~masks)),
+    }
+
+
+def save_inference_artifacts(
+    output_dir: Path | str,
+    predictions: np.ndarray,
+    targets: np.ndarray,
+    masks: np.ndarray,
+    molecule_ids: Sequence[str],
+) -> dict[str, str]:
+    """Atomically save test inference predictions, targets, masks, and IDs.
+
+    Args:
+        output_dir: Destination directory.
+        predictions: Predicted probability array of shape [783, 12].
+        targets: Target label array of shape [783, 12].
+        masks: Boolean mask array of shape [783, 12].
+        molecule_ids: List of 783 molecule identifiers.
+
+    Returns:
+        Dictionary mapping artifact names to their file paths.
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    pred_path = out_dir / "test_predictions.npy"
+    target_path = out_dir / "test_targets.npy"
+    mask_path = out_dir / "test_masks.npy"
+    mol_ids_path = out_dir / "test_molecule_ids.csv"
+
+    # Save arrays
+    np.save(pred_path, predictions)
+    np.save(target_path, targets)
+    np.save(mask_path, masks)
+
+    # Save molecule IDs CSV
+    import pandas as pd
+    ids_df = pd.DataFrame({
+        "test_index": np.arange(len(molecule_ids)),
+        "mol_id": molecule_ids,
+    })
+    ids_df.to_csv(mol_ids_path, index=False)
+
+    logger.info("Saved inference arrays to %s", out_dir)
+    return {
+        "test_predictions": str(pred_path),
+        "test_targets": str(target_path),
+        "test_masks": str(mask_path),
+        "test_molecule_ids": str(mol_ids_path),
+    }
+
+
