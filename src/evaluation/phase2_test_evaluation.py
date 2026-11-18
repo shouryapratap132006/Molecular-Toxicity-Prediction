@@ -891,5 +891,510 @@ def build_evaluation_summary(
     }
 
 
+def generate_all_phase2_figures(
+    predictions: np.ndarray,
+    targets: np.ndarray,
+    masks: np.ndarray,
+    endpoint_order: Sequence[str] = CANONICAL_ENDPOINTS,
+    figures_dir: Path | str = "reports/figures/phase2",
+    dpi: int = 300,
+) -> dict[str, str]:
+    """Generate all seven publication-quality evaluation figures at >= 300 DPI.
+
+    Figures generated:
+    1. endpoint_roc_auc.png: Endpoint-wise ROC-AUC bar chart with macro-mean line.
+    2. endpoint_pr_auc.png: Endpoint-wise PR-AUC bar chart with prevalence baseline markers.
+    3. endpoint_roc_curves.png: 3x4 grid of Receiver Operating Characteristic curves.
+    4. endpoint_precision_recall_curves.png: 3x4 grid of Precision-Recall curves.
+    5. prediction_probability_distributions.png: Predicted probability distributions by class.
+    6. endpoint_confusion_matrices.png: 3x4 grid of confusion matrices at fixed threshold 0.5.
+    7. endpoint_valid_label_distribution.png: Stacked bar chart of observed pos/neg/missing labels.
+
+    Args:
+        predictions: Predicted probabilities [783, 12].
+        targets: Target labels [783, 12].
+        masks: Validity masks [783, 12].
+        endpoint_order: Ordered endpoint names.
+        figures_dir: Directory where figures are saved.
+        dpi: Dots per inch for raster export (minimum 300).
+
+    Returns:
+        Dictionary mapping figure names to absolute file paths.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig_dir = Path(figures_dir)
+    fig_dir.mkdir(parents=True, exist_ok=True)
+
+    from src.evaluation.metrics import compute_roc_auc, compute_pr_auc, compute_threshold_metrics
+
+    # Compute metrics for plotting
+    roc_list = []
+    pr_list = []
+    prev_list = []
+    pos_counts = []
+    neg_counts = []
+    missing_counts = []
+
+    for idx, name in enumerate(endpoint_order):
+        m = masks[:, idx]
+        yt = targets[:, idx][m]
+        ys = predictions[:, idx][m]
+
+        n_pos = int(np.sum(yt == 1.0))
+        n_neg = int(np.sum(yt == 0.0))
+        n_missing = int(len(targets) - len(yt))
+        prev = n_pos / len(yt) if len(yt) > 0 else 0.0
+
+        roc = compute_roc_auc(yt, ys)
+        pr = compute_pr_auc(yt, ys, method="average_precision")
+
+        roc_list.append(roc)
+        pr_list.append(pr)
+        prev_list.append(prev)
+        pos_counts.append(n_pos)
+        neg_counts.append(n_neg)
+        missing_counts.append(n_missing)
+
+    macro_roc = float(np.mean([r for r in roc_list if not np.isnan(r)]))
+    macro_pr = float(np.mean([p for p in pr_list if not np.isnan(p)]))
+
+    generated_paths = {}
+
+    # -------------------------------------------------------------
+    # Figure 1: endpoint_roc_auc.png
+    # -------------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=dpi)
+    x_indices = np.arange(len(endpoint_order))
+    colors = ["#1f77b4" if r >= macro_roc else "#aec7e8" for r in roc_list]
+    bars = ax.bar(x_indices, roc_list, color=colors, edgecolor="#0d3d63", width=0.6, zorder=3)
+
+    ax.axhline(macro_roc, color="#d62728", linestyle="--", linewidth=1.5,
+               label=f"Macro Mean ROC-AUC: {macro_roc:.4f}", zorder=4)
+    ax.axhline(0.5, color="#7f7f7f", linestyle=":", linewidth=1.2,
+               label="Random Classifier Baseline (0.50)", zorder=4)
+
+    for bar, val in zip(bars, roc_list):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.015,
+                f"{val:.3f}", ha="center", va="bottom", fontsize=8, fontweight="bold")
+
+    ax.set_xticks(x_indices)
+    ax.set_xticklabels(endpoint_order, rotation=40, ha="right", fontsize=9)
+    ax.set_ylim(0.4, 0.95)
+    ax.set_ylabel("ROC-AUC", fontsize=10, fontweight="bold")
+    ax.set_title("Phase 2 MolecularGNN: Quarantined Test Set ROC-AUC by Toxicity Endpoint (N=783)",
+                 fontsize=11, fontweight="bold", pad=12)
+    ax.grid(axis="y", linestyle="--", alpha=0.5, zorder=0)
+    ax.legend(loc="lower right", frameon=True, facecolor="white", edgecolor="#ccc", fontsize=9)
+    fig.tight_layout()
+
+    fig1_path = fig_dir / "endpoint_roc_auc.png"
+    fig.savefig(fig1_path, dpi=dpi)
+    plt.close(fig)
+    generated_paths["endpoint_roc_auc"] = str(fig1_path)
+
+    # -------------------------------------------------------------
+    # Figure 2: endpoint_pr_auc.png
+    # -------------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(10, 5), dpi=dpi)
+    bars = ax.bar(x_indices, pr_list, color="#2ca02c", edgecolor="#145214", width=0.6,
+                  label="Model Average Precision (PR-AUC)", zorder=3)
+    ax.scatter(x_indices, prev_list, color="#d62728", s=45, marker="D",
+               label="Positive Prevalence (Random Baseline)", zorder=5)
+
+    ax.axhline(macro_pr, color="#ff7f0e", linestyle="--", linewidth=1.5,
+               label=f"Macro Mean PR-AUC: {macro_pr:.4f}", zorder=4)
+
+    for bar, val in zip(bars, pr_list):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.012,
+                f"{val:.3f}", ha="center", va="bottom", fontsize=8, fontweight="bold")
+
+    ax.set_xticks(x_indices)
+    ax.set_xticklabels(endpoint_order, rotation=40, ha="right", fontsize=9)
+    ax.set_ylim(0.0, 0.65)
+    ax.set_ylabel("PR-AUC (Average Precision)", fontsize=10, fontweight="bold")
+    ax.set_title("Phase 2 MolecularGNN: Quarantined Test Set PR-AUC vs Baseline Prevalence",
+                 fontsize=11, fontweight="bold", pad=12)
+    ax.grid(axis="y", linestyle="--", alpha=0.5, zorder=0)
+    ax.legend(loc="upper right", frameon=True, facecolor="white", edgecolor="#ccc", fontsize=9)
+    fig.tight_layout()
+
+    fig2_path = fig_dir / "endpoint_pr_auc.png"
+    fig.savefig(fig2_path, dpi=dpi)
+    plt.close(fig)
+    generated_paths["endpoint_pr_auc"] = str(fig2_path)
+
+    # -------------------------------------------------------------
+    # Figure 3: endpoint_roc_curves.png
+    # -------------------------------------------------------------
+    fig, axes = plt.subplots(3, 4, figsize=(14, 10), dpi=dpi, sharex=True, sharey=True)
+    axes = axes.flatten()
+
+    for idx, name in enumerate(endpoint_order):
+        ax = axes[idx]
+        m = masks[:, idx]
+        yt = targets[:, idx][m]
+        ys = predictions[:, idx][m]
+
+        desc_order = np.argsort(ys)[::-1]
+        yt_sorted = yt[desc_order]
+
+        n_pos = int(np.sum(yt == 1.0))
+        n_neg = int(np.sum(yt == 0.0))
+
+        tpr = np.cumsum(yt_sorted == 1.0) / n_pos
+        fpr = np.cumsum(yt_sorted == 0.0) / n_neg
+
+        tpr = np.concatenate([[0.0], tpr])
+        fpr = np.concatenate([[0.0], fpr])
+
+        ax.plot(fpr, tpr, color="#1f77b4", linewidth=1.8, label=f"AUC = {roc_list[idx]:.3f}")
+        ax.plot([0, 1], [0, 1], color="#999999", linestyle="--", linewidth=1)
+        ax.fill_between(fpr, tpr, alpha=0.15, color="#1f77b4")
+
+        ax.set_title(name, fontsize=10, fontweight="bold")
+        ax.set_xlim(-0.02, 1.02)
+        ax.set_ylim(-0.02, 1.05)
+        ax.grid(True, linestyle=":", alpha=0.6)
+        ax.legend(loc="lower right", fontsize=8, frameon=True)
+
+    fig.text(0.5, 0.01, "False Positive Rate (1 - Specificity)", ha="center", fontsize=11, fontweight="bold")
+    fig.text(0.01, 0.5, "True Positive Rate (Sensitivity / Recall)", va="center", rotation="vertical", fontsize=11, fontweight="bold")
+    fig.suptitle("Phase 2 MolecularGNN: Receiver Operating Characteristic (ROC) Curves by Endpoint",
+                 fontsize=13, fontweight="bold", y=0.99)
+    fig.tight_layout(rect=[0.02, 0.03, 1, 0.96])
+
+    fig3_path = fig_dir / "endpoint_roc_curves.png"
+    fig.savefig(fig3_path, dpi=dpi)
+    plt.close(fig)
+    generated_paths["endpoint_roc_curves"] = str(fig3_path)
+
+    # -------------------------------------------------------------
+    # Figure 4: endpoint_precision_recall_curves.png
+    # -------------------------------------------------------------
+    fig, axes = plt.subplots(3, 4, figsize=(14, 10), dpi=dpi, sharex=True, sharey=True)
+    axes = axes.flatten()
+
+    for idx, name in enumerate(endpoint_order):
+        ax = axes[idx]
+        m = masks[:, idx]
+        yt = targets[:, idx][m]
+        ys = predictions[:, idx][m]
+
+        desc_order = np.argsort(ys)[::-1]
+        yt_sorted = yt[desc_order]
+
+        n_pos = int(np.sum(yt == 1.0))
+        tp = np.cumsum(yt_sorted == 1.0)
+        fp = np.cumsum(yt_sorted == 0.0)
+
+        recall = tp / n_pos
+        precision = tp / (tp + fp)
+
+        recall = np.concatenate([[0.0], recall])
+        precision = np.concatenate([[precision[0]], precision])
+
+        ax.plot(recall, precision, color="#2ca02c", linewidth=1.8, label=f"AP = {pr_list[idx]:.3f}")
+        ax.axhline(prev_list[idx], color="#d62728", linestyle=":", linewidth=1.2,
+                   label=f"Prev = {prev_list[idx]:.3f}")
+        ax.fill_between(recall, precision, alpha=0.15, color="#2ca02c")
+
+        ax.set_title(name, fontsize=10, fontweight="bold")
+        ax.set_xlim(-0.02, 1.02)
+        ax.set_ylim(-0.02, 1.05)
+        ax.grid(True, linestyle=":", alpha=0.6)
+        ax.legend(loc="upper right", fontsize=8, frameon=True)
+
+    fig.text(0.5, 0.01, "Recall (Sensitivity)", ha="center", fontsize=11, fontweight="bold")
+    fig.text(0.01, 0.5, "Precision", va="center", rotation="vertical", fontsize=11, fontweight="bold")
+    fig.suptitle("Phase 2 MolecularGNN: Precision-Recall Curves by Toxicity Endpoint",
+                 fontsize=13, fontweight="bold", y=0.99)
+    fig.tight_layout(rect=[0.02, 0.03, 1, 0.96])
+
+    fig4_path = fig_dir / "endpoint_precision_recall_curves.png"
+    fig.savefig(fig4_path, dpi=dpi)
+    plt.close(fig)
+    generated_paths["endpoint_precision_recall_curves"] = str(fig4_path)
+
+    # -------------------------------------------------------------
+    # Figure 5: prediction_probability_distributions.png
+    # -------------------------------------------------------------
+    fig, axes = plt.subplots(3, 4, figsize=(14, 10), dpi=dpi, sharex=True, sharey=True)
+    axes = axes.flatten()
+
+    for idx, name in enumerate(endpoint_order):
+        ax = axes[idx]
+        m = masks[:, idx]
+        yt = targets[:, idx][m]
+        ys = predictions[:, idx][m]
+
+        neg_scores = ys[yt == 0.0]
+        pos_scores = ys[yt == 1.0]
+
+        bins = np.linspace(0.0, 1.0, 26)
+        ax.hist(neg_scores, bins=bins, color="#1f77b4", alpha=0.6, density=True, label="Negative (0)")
+        ax.hist(pos_scores, bins=bins, color="#d62728", alpha=0.6, density=True, label="Positive (1)")
+        ax.axvline(0.5, color="#333333", linestyle="--", linewidth=1.0, label="t = 0.5")
+
+        ax.set_title(name, fontsize=10, fontweight="bold")
+        ax.set_xlim(0.0, 1.0)
+        ax.grid(True, linestyle=":", alpha=0.5)
+        ax.legend(loc="upper right", fontsize=7, frameon=True)
+
+    fig.text(0.5, 0.01, "Predicted Continuous Probability", ha="center", fontsize=11, fontweight="bold")
+    fig.text(0.01, 0.5, "Normalized Density", va="center", rotation="vertical", fontsize=11, fontweight="bold")
+    fig.suptitle("Phase 2 MolecularGNN: Continuous Prediction Distributions by Class Label",
+                 fontsize=13, fontweight="bold", y=0.99)
+    fig.tight_layout(rect=[0.02, 0.03, 1, 0.96])
+
+    fig5_path = fig_dir / "prediction_probability_distributions.png"
+    fig.savefig(fig5_path, dpi=dpi)
+    plt.close(fig)
+    generated_paths["prediction_probability_distributions"] = str(fig5_path)
+
+    # -------------------------------------------------------------
+    # Figure 6: endpoint_confusion_matrices.png
+    # -------------------------------------------------------------
+    fig, axes = plt.subplots(3, 4, figsize=(14, 10), dpi=dpi)
+    axes = axes.flatten()
+
+    for idx, name in enumerate(endpoint_order):
+        ax = axes[idx]
+        m = masks[:, idx]
+        yt = targets[:, idx][m]
+        ys = predictions[:, idx][m]
+
+        tm = compute_threshold_metrics(yt, ys, threshold=0.5)
+        cm = np.array([[tm["tn"], tm["fp"]], [tm["fn"], tm["tp"]]])
+
+        cax = ax.matshow(cm, cmap="Blues", alpha=0.8)
+        for i in range(2):
+            for j in range(2):
+                val = cm[i, j]
+                text_color = "white" if val > cm.max() * 0.5 else "black"
+                label_txt = "TN" if (i, j) == (0, 0) else ("FP" if (i, j) == (0, 1) else ("FN" if (i, j) == (1, 0) else "TP"))
+                ax.text(j, i, f"{label_txt}\n{val}", ha="center", va="center",
+                        color=text_color, fontsize=9, fontweight="bold")
+
+        ax.set_title(f"{name}\nF1={tm['f1']:.2f} | BAcc={tm['balanced_accuracy']:.2f}",
+                     fontsize=9, fontweight="bold", pad=8)
+        ax.set_xticks([0, 1])
+        ax.set_yticks([0, 1])
+        ax.set_xticklabels(["0 (Inact)", "1 (Act)"], fontsize=8)
+        ax.set_yticklabels(["0 (Inact)", "1 (Act)"], fontsize=8)
+
+    fig.text(0.5, 0.01, "Predicted Class (Threshold = 0.5)", ha="center", fontsize=11, fontweight="bold")
+    fig.text(0.01, 0.5, "True Class Label", va="center", rotation="vertical", fontsize=11, fontweight="bold")
+    fig.suptitle("Phase 2 MolecularGNN: Supplementary Confusion Matrices at Fixed Threshold 0.5",
+                 fontsize=13, fontweight="bold", y=0.99)
+    fig.tight_layout(rect=[0.02, 0.03, 1, 0.96])
+
+    fig6_path = fig_dir / "endpoint_confusion_matrices.png"
+    fig.savefig(fig6_path, dpi=dpi)
+    plt.close(fig)
+    generated_paths["endpoint_confusion_matrices"] = str(fig6_path)
+
+    # -------------------------------------------------------------
+    # Figure 7: endpoint_valid_label_distribution.png
+    # -------------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(11, 6), dpi=dpi)
+    y_pos = np.arange(len(endpoint_order))
+
+    pos_arr = np.array(pos_counts)
+    neg_arr = np.array(neg_counts)
+    miss_arr = np.array(missing_counts)
+
+    p1 = ax.barh(y_pos, pos_arr, color="#d62728", edgecolor="#801414", height=0.6, label="Observed Active (y=1)", zorder=3)
+    p2 = ax.barh(y_pos, neg_arr, left=pos_arr, color="#1f77b4", edgecolor="#0d3d63", height=0.6, label="Observed Inactive (y=0)", zorder=3)
+    p3 = ax.barh(y_pos, miss_arr, left=pos_arr + neg_arr, color="#d3d3d3", edgecolor="#999999", height=0.6, label="Missing / Untested (NaN)", zorder=3)
+
+    ax.axvline(783, color="#333333", linestyle="--", linewidth=1.2, label="Test Set Universe (N=783)", zorder=4)
+
+    for i in range(len(endpoint_order)):
+        obs = pos_arr[i] + neg_arr[i]
+        pct = 100.0 * obs / 783.0
+        prev_pct = 100.0 * pos_arr[i] / obs
+        ax.text(788, i, f"{obs}/783 ({pct:.1f}%) | Prev: {prev_pct:.1f}%",
+                va="center", ha="left", fontsize=8, fontweight="bold")
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(endpoint_order, fontsize=9)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 1050)
+    ax.set_xlabel("Number of Test Molecular Graphs", fontsize=10, fontweight="bold")
+    ax.set_title("Phase 2 Quarantined Test Partition: Assay Label Observation & Missingness (N=783)",
+                 fontsize=11, fontweight="bold", pad=12)
+    ax.grid(axis="x", linestyle="--", alpha=0.5, zorder=0)
+    ax.legend(loc="lower right", frameon=True, facecolor="white", edgecolor="#ccc", fontsize=9)
+    fig.tight_layout()
+
+    fig7_path = fig_dir / "endpoint_valid_label_distribution.png"
+    fig.savefig(fig7_path, dpi=dpi)
+    plt.close(fig)
+    generated_paths["endpoint_valid_label_distribution"] = str(fig7_path)
+
+    logger.info("Successfully generated all 7 publication-quality figures in %s", fig_dir)
+    return generated_paths
+
+
+def run_evaluation_pipeline(
+    config: Optional[EvaluationConfig] = None,
+) -> dict[str, Any]:
+    """Execute complete Phase 2 GNN final test evaluation workflow.
+
+    Workflow Stages:
+    1. Verify checkpoint SHA-256 and configuration.
+    2. Load quarantined test dataset (N=783).
+    3. Execute batched inference with zero label leakage.
+    4. Save prediction, target, and mask arrays.
+    5. Compute mask-aware ROC-AUC, PR-AUC, and macro uncertainty aggregates.
+    6. Compute supplementary fixed threshold 0.5 classification metrics.
+    7. Execute comprehensive factual error analysis.
+    8. Generate 7 publication-quality figures at >= 300 DPI.
+    9. Compile and write evaluation summary JSON and logs.
+
+    Args:
+        config: EvaluationConfig instance (uses defaults if None).
+
+    Returns:
+        Dictionary of evaluation summary, metrics, figures, and artifact paths.
+    """
+    if config is None:
+        config = EvaluationConfig()
+    config.validate()
+
+    setup_evaluation_logging(config.output_dir)
+    logger.info("============================================================")
+    logger.info("Initiating Phase 2 MolecularGNN Final Quarantined Test Evaluation")
+    logger.info("Evaluator: Student 4 | Quarantined Test Size: %d", config.expected_test_molecules)
+    logger.info("============================================================")
+
+    # 1. Verify and load checkpoint
+    model, ckpt_meta = verify_and_load_checkpoint(
+        config.checkpoint_path,
+        expected_sha256=config.expected_sha256,
+        device=config.device,
+    )
+
+    # 2. Load quarantined test dataset
+    from src.data.graph_preprocess import load_graph_datasets
+    datasets = load_graph_datasets()
+    test_data = datasets["test"]
+
+    # 3. Quarantined batched inference
+    inference_res = run_test_inference(
+        model=model,
+        test_dataset=test_data,
+        batch_size=config.batch_size,
+        device=ckpt_meta["device"],
+    )
+
+    # 4. Save raw predictions, targets, masks, mol_ids
+    saved_arrays = save_inference_artifacts(
+        output_dir=config.output_dir,
+        predictions=inference_res["predictions"],
+        targets=inference_res["targets"],
+        masks=inference_res["masks"],
+        molecule_ids=inference_res["molecule_ids"],
+    )
+
+    # 5. Mask-aware metrics
+    endpoint_df, agg_dict = compute_mask_aware_metrics(
+        predictions=inference_res["predictions"],
+        targets=inference_res["targets"],
+        masks=inference_res["masks"],
+        endpoint_order=config.endpoint_order,
+    )
+    saved_metrics = save_metric_artifacts(
+        output_dir=config.output_dir,
+        endpoint_df=endpoint_df,
+        aggregate_dict=agg_dict,
+    )
+
+    # 6. Supplementary threshold metrics
+    thresh_df, thresh_summary = compute_supplementary_threshold_analysis(
+        predictions=inference_res["predictions"],
+        targets=inference_res["targets"],
+        masks=inference_res["masks"],
+        endpoint_order=config.endpoint_order,
+        threshold=config.threshold,
+    )
+
+    # 7. Error analysis
+    error_summary = run_error_analysis(
+        predictions=inference_res["predictions"],
+        targets=inference_res["targets"],
+        masks=inference_res["masks"],
+        molecule_ids=inference_res["molecule_ids"],
+        endpoint_order=config.endpoint_order,
+        threshold=config.threshold,
+    )
+
+    # 8. Visualizations
+    fig_paths = generate_all_phase2_figures(
+        predictions=inference_res["predictions"],
+        targets=inference_res["targets"],
+        masks=inference_res["masks"],
+        endpoint_order=config.endpoint_order,
+        figures_dir=config.figures_dir,
+        dpi=300,
+    )
+
+    # 9. Summary compilation and serialization
+    from src.data.common import write_json
+    summary = build_evaluation_summary(
+        config=config,
+        checkpoint_meta=ckpt_meta,
+        inference_meta=inference_res,
+        aggregate_meta=agg_dict,
+        threshold_summary=thresh_summary,
+        error_summary=error_summary,
+    )
+    summary_path = Path(config.output_dir) / "evaluation_summary.json"
+    write_json(summary_path, summary)
+
+    logger.info("=" * 60)
+    logger.info("Phase 2 Test Evaluation Completed Successfully!")
+    logger.info("Macro ROC-AUC: %s", agg_dict["macro_roc_auc"]["formatted_sem"])
+    logger.info("Macro PR-AUC: %s", agg_dict["macro_pr_auc"]["formatted_sem"])
+    logger.info("Figures Directory: %s (%d figures generated)", config.figures_dir, len(fig_paths))
+    logger.info("Artifacts Directory: %s", config.output_dir)
+    logger.info("=" * 60)
+
+    return {
+        "summary": summary,
+        "endpoint_metrics": endpoint_df,
+        "aggregate_metrics": agg_dict,
+        "figures": fig_paths,
+        "artifacts": {
+            **saved_arrays,
+            **saved_metrics,
+            "evaluation_summary": str(summary_path),
+        },
+    }
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    """CLI entry point for Phase 2 test evaluation."""
+    args = parse_args(argv)
+    cfg = EvaluationConfig(
+        checkpoint_path=args.checkpoint,
+        batch_size=args.batch_size,
+        device=args.device,
+        output_dir=args.output_dir,
+        figures_dir=args.figures_dir,
+        threshold=args.threshold,
+    )
+    run_evaluation_pipeline(cfg)
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+
 
 
