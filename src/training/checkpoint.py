@@ -18,32 +18,28 @@ logger = logging.getLogger(__name__)
 
 
 def save_checkpoint(
-    filepath: Path | str,
-    model: nn.Module,
-    epoch: int,
-    best_val_loss: float,
+    filepath: Optional[Path | str] = None,
+    model: Optional[nn.Module] = None,
+    epoch: int = 0,
+    best_val_loss: Optional[float] = None,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[Any] = None,
     config: Optional[TrainingConfig] = None,
     extra_metadata: Optional[dict[str, Any]] = None,
+    path: Optional[Path | str] = None,
+    val_loss: Optional[float] = None,
 ) -> Path:
-    """Save training state and model weights to a PyTorch checkpoint.
+    """Save training state and model weights to a PyTorch checkpoint."""
+    actual_path = filepath if filepath is not None else path
+    if actual_path is None:
+        raise ValueError("Either filepath or path must be provided to save_checkpoint.")
+    if model is None:
+        raise ValueError("model must be provided to save_checkpoint.")
 
-    Args:
-        filepath: Destination path (e.g. results/phase2/checkpoints/best_gnn.pt).
-        model: Trained MolecularGNN model.
-        epoch: Current epoch number.
-        best_val_loss: Best validation loss achieved so far.
-        optimizer: Optional optimizer state.
-        scheduler: Optional learning rate scheduler state.
-        config: Optional TrainingConfig instance.
-        extra_metadata: Optional dictionary of additional experiment metadata.
+    actual_val_loss = best_val_loss if best_val_loss is not None else (val_loss if val_loss is not None else float("inf"))
 
-    Returns:
-        Path of the saved checkpoint.
-    """
-    path = Path(filepath)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path_obj = Path(actual_path)
+    path_obj.parent.mkdir(parents=True, exist_ok=True)
 
     model_config_dict: Optional[dict[str, Any]] = None
     if hasattr(model, "config") and model.config is not None:
@@ -56,7 +52,7 @@ def save_checkpoint(
 
     checkpoint = {
         "epoch": epoch,
-        "best_val_loss": float(best_val_loss),
+        "best_val_loss": float(actual_val_loss),
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict() if optimizer is not None else None,
         "scheduler_state_dict": scheduler.state_dict() if scheduler is not None else None,
@@ -68,9 +64,9 @@ def save_checkpoint(
         "extra_metadata": extra_metadata or {},
     }
 
-    torch.save(checkpoint, path)
-    logger.info("Saved model checkpoint to %s (epoch %d, val_loss %.5f)", path, epoch, best_val_loss)
-    return path
+    torch.save(checkpoint, path_obj)
+    logger.info("Saved model checkpoint to %s (epoch %d, val_loss %.5f)", path_obj, epoch, actual_val_loss)
+    return path_obj
 
 
 def load_checkpoint(

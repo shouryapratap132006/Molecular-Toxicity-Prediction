@@ -62,7 +62,13 @@ def get_device(preference: str = "auto") -> torch.device:
         if torch.cuda.is_available():
             return torch.device("cuda")
         if torch.backends.mps.is_available():
-            return torch.device("mps")
+            # In auto mode, only select MPS if macOS >= 15 to avoid PyTorch 2.15 MPSNDArray incompatibility
+            try:
+                major = int(platform.mac_ver()[0].split(".")[0])
+                if major >= 15:
+                    return torch.device("mps")
+            except Exception:
+                pass
         return torch.device("cpu")
     else:
         raise ValueError(f"Unknown device preference: {preference}. Use auto, cuda, mps, or cpu.")

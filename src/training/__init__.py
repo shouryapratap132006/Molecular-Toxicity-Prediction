@@ -19,6 +19,7 @@ from src.training.losses import (
 from src.training.metrics import TrainingLogger
 from src.training.reproducibility import get_device, get_system_info, set_seed
 from src.training.scheduler import build_scheduler, step_scheduler
+from src.training.train import main, run_training
 from src.training.trainer import evaluate, train_one_epoch
 
 __all__ = [
@@ -33,7 +34,9 @@ __all__ = [
     "get_system_info",
     "load_checkpoint",
     "load_model_from_checkpoint",
+    "main",
     "masked_bce_loss",
+    "run_training",
     "save_checkpoint",
     "set_seed",
     "step_scheduler",

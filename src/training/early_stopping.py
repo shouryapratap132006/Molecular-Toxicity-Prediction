@@ -36,6 +36,11 @@ class EarlyStopping:
         self.counter: int = 0
         self.should_stop: bool = False
 
+    @property
+    def best_loss(self) -> float:
+        """Alias for best_score when monitoring loss."""
+        return self.best_score
+
     def step(self, current_score: float, epoch: int) -> bool:
         """Update early stopping state with the current epoch's metric score.
 

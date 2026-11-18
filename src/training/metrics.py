@@ -26,26 +26,37 @@ class TrainingLogger:
         epoch: int,
         train_loss: float,
         val_loss: float,
-        learning_rate: float,
-        epoch_time_sec: float,
-        valid_labels_train: int,
-        valid_labels_val: int,
+        learning_rate: Optional[float] = None,
+        epoch_time_sec: float = 0.0,
+        valid_labels_train: int = 0,
+        valid_labels_val: int = 0,
+        lr: Optional[float] = None,
+        train_labels: Optional[int] = None,
+        val_labels: Optional[int] = None,
     ) -> None:
         """Record metrics for an epoch."""
+        actual_lr = learning_rate if learning_rate is not None else (lr if lr is not None else 0.0)
+        actual_train_cnt = valid_labels_train if valid_labels_train else (train_labels if train_labels else 0)
+        actual_val_cnt = valid_labels_val if valid_labels_val else (val_labels if val_labels else 0)
+
         record = {
             "epoch": int(epoch),
             "train_loss": float(train_loss),
             "val_loss": float(val_loss),
-            "learning_rate": float(learning_rate),
+            "learning_rate": float(actual_lr),
             "epoch_time_sec": float(epoch_time_sec),
-            "valid_labels_train": int(valid_labels_train),
-            "valid_labels_val": int(valid_labels_val),
+            "valid_labels_train": int(actual_train_cnt),
+            "valid_labels_val": int(actual_val_cnt),
         }
         self.history.append(record)
 
     def to_dataframe(self) -> pd.DataFrame:
         """Return history as a pandas DataFrame."""
         return pd.DataFrame(self.history)
+
+    def to_csv(self, path: Path | str) -> Path:
+        """Alias for save_history_csv."""
+        return self.save_history_csv(path)
 
     def save_history_csv(self, path: Path | str) -> Path:
         """Save training history to CSV."""
@@ -82,6 +93,15 @@ class TrainingLogger:
             json.dump(summary, f, indent=2, sort_keys=True)
         logger.info("Saved training summary JSON to %s", target)
         return target
+
+    def plot_curves(
+        self,
+        output_path: Path | str,
+        best_epoch: Optional[int] = None,
+        title: Optional[str] = None,
+    ) -> Path:
+        """Alias for plot_training_curves."""
+        return self.plot_training_curves(output_path, best_epoch=best_epoch)
 
     def plot_training_curves(
         self,
