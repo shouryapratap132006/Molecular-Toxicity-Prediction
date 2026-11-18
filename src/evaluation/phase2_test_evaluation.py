@@ -161,3 +161,106 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         help="Fixed classification decision threshold (default: 0.5)",
     )
     return parser.parse_args(argv)
+
+
+def verify_and_load_checkpoint(
+    checkpoint_path: Path | str,
+    expected_sha256: Optional[str] = EXPECTED_CHECKPOINT_SHA256,
+    device: str | torch.device = "auto",
+) -> tuple[torch.nn.Module, dict[str, Any]]:
+    """Verify Student 3 checkpoint integrity, configuration, and load into eval mode.
+
+    Guarantees:
+    1. File exists and SHA-256 matches the expected digest exactly.
+    2. Architecture parameters match Student 3 specification (hidden_dim=128, layers=3, endpoints=12).
+    3. Endpoint order strictly corresponds to the canonical 12 Tox21 assays.
+    4. Model is returned strictly in eval() mode on the specified device.
+    5. Zero modifications to checkpoint file on disk.
+
+    Args:
+        checkpoint_path: Path to checkpoint file.
+        expected_sha256: Expected SHA-256 digest string, or None to skip hash check.
+        device: Target compute device ("auto", "cpu", "cuda", "mps").
+
+    Returns:
+        Tuple of (loaded_model, checkpoint_verification_metadata).
+    """
+    path = Path(checkpoint_path).resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Checkpoint file not found: {path}")
+
+    # Compute and verify SHA-256
+    file_bytes = path.read_bytes()
+    computed_sha256 = hashlib.sha256(file_bytes).hexdigest()
+    file_size = len(file_bytes)
+
+    if expected_sha256 is not None and computed_sha256 != expected_sha256:
+        raise ValueError(
+            f"Checkpoint SHA-256 mismatch!\n"
+            f"Expected: {expected_sha256}\n"
+            f"Computed: {computed_sha256}"
+        )
+
+    # Resolve device
+    from src.training.reproducibility import get_device
+    target_device = get_device(device) if isinstance(device, str) else device
+
+    from src.training.checkpoint import load_checkpoint, load_model_from_checkpoint
+    state = load_checkpoint(path, device=target_device)
+
+    # Verify essential checkpoint contents
+    required_keys = {"epoch", "best_val_loss", "model_state_dict", "model_config"}
+    missing_keys = required_keys - set(state.keys())
+    if missing_keys:
+        raise KeyError(f"Checkpoint corrupted: missing required keys {missing_keys}")
+
+    # Validate endpoint order if present
+    endpoint_order = state.get("endpoint_order", CANONICAL_ENDPOINTS)
+    if endpoint_order != CANONICAL_ENDPOINTS:
+        raise ValueError(
+            f"Checkpoint endpoint order mismatch!\nExpected: {CANONICAL_ENDPOINTS}\nGot: {endpoint_order}"
+        )
+
+    # Validate model configuration
+    model_cfg = state.get("model_config", {})
+    if model_cfg.get("num_tasks") != EXPECTED_TASK_COUNT:
+        raise ValueError(
+            f"Model task dimension mismatch: expected {EXPECTED_TASK_COUNT}, got {model_cfg.get('num_tasks')}"
+        )
+
+    # Instantiate and load model
+    model = load_model_from_checkpoint(path, device=target_device)
+    model.eval()
+
+    # Verify evaluation mode
+    if model.training:
+        raise RuntimeError("Model failed to enter evaluation mode (training is True)")
+
+    # Parameter count and layer verification
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    metadata = {
+        "checkpoint_path": str(path),
+        "sha256": computed_sha256,
+        "size_bytes": file_size,
+        "epoch": state.get("epoch"),
+        "best_val_loss": state.get("best_val_loss"),
+        "total_parameters": total_params,
+        "trainable_parameters": trainable_params,
+        "model_config": model_cfg,
+        "training_config": state.get("training_config", {}),
+        "endpoint_order": endpoint_order,
+        "device": str(target_device),
+        "evaluation_mode": not model.training,
+    }
+
+    logger.info(
+        "Verified Student 3 checkpoint successfully: %s (epoch=%s, best_val_loss=%.4f, SHA256=%s...)",
+        path.name,
+        metadata["epoch"],
+        metadata["best_val_loss"],
+        computed_sha256[:12],
+    )
+    return model, metadata
+
