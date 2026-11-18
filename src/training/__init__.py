@@ -7,6 +7,7 @@ and Molecular Graph Networks.
 from src.training.config import TrainingConfig
 from src.training.losses import MaskedBCELoss, masked_bce_loss
 from src.training.reproducibility import get_device, get_system_info, set_seed
+from src.training.trainer import train_one_epoch
 
 __all__ = [
     "MaskedBCELoss",
@@ -15,4 +16,5 @@ __all__ = [
     "get_system_info",
     "masked_bce_loss",
     "set_seed",
+    "train_one_epoch",
 ]
