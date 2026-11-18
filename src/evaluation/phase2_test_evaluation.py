@@ -474,3 +474,122 @@ def save_inference_artifacts(
     }
 
 
+def compute_mask_aware_metrics(
+    predictions: np.ndarray,
+    targets: np.ndarray,
+    masks: np.ndarray,
+    endpoint_order: Sequence[str] = CANONICAL_ENDPOINTS,
+) -> tuple[Any, dict[str, Any]]:
+    """Compute mask-aware evaluation metrics across all 12 endpoints.
+
+    Strict Masking Guarantees:
+    1. Untested assay entries (where mask is False or targets are NaN) are completely
+       isolated and excluded from rank and precision-recall calculations.
+    2. Missing labels are never imputed, substituted, or converted to negative/zero.
+    3. ROC-AUC is calculated via Wilcoxon/Mann-Whitney U rank-sum with exact average
+       tie correction. Single-class partitions gracefully yield NaN with status
+       'single_class_undefined'.
+    4. PR-AUC represents Average Precision (integral of Precision w.r.t Recall).
+    5. Macro-averaging includes only non-single-class valid endpoints (K_valid),
+       reporting mean, sample standard deviation (ddof=1), SEM, and 95% Student-t CI.
+
+    Args:
+        predictions: Continuous predicted probabilities [783, 12].
+        targets: Ground-truth target labels [783, 12].
+        masks: Ground-truth observation masks [783, 12].
+        endpoint_order: Ordered sequence of endpoint names.
+
+    Returns:
+        Tuple of (endpoint_metrics_dataframe, aggregate_metrics_dictionary).
+    """
+    import pandas as pd
+    from src.evaluation.metrics import evaluate_endpoint
+    from src.evaluation.aggregation import aggregate_endpoint_metrics
+
+    endpoint_rows: list[dict[str, Any]] = []
+    endpoint_eval_map: dict[str, dict[str, Any]] = {}
+
+    for task_idx, name in enumerate(endpoint_order):
+        yt = targets[:, task_idx]
+        ys = predictions[:, task_idx]
+        m = masks[:, task_idx]
+
+        total_samples = len(yt)
+        yt_valid = yt[m]
+        ys_valid = ys[m]
+        observed = len(yt_valid)
+        missing = total_samples - observed
+
+        res = evaluate_endpoint(yt_valid, ys_valid, endpoint_name=name)
+
+        n_pos = int(np.sum(yt_valid == 1.0)) if observed > 0 else 0
+        n_neg = int(np.sum(yt_valid == 0.0)) if observed > 0 else 0
+        prev = float(n_pos / observed) if observed > 0 else float(np.nan)
+
+        record = {
+            "endpoint": name,
+            "status": res["status"],
+            "total_samples": total_samples,
+            "observed": observed,
+            "missing": missing,
+            "positive_count": n_pos,
+            "negative_count": n_neg,
+            "prevalence": prev,
+            "roc_auc": res["roc_auc"],
+            "pr_auc": res["pr_auc"],
+        }
+        endpoint_rows.append(record)
+        endpoint_eval_map[name] = res
+
+    # Compute macro-aggregates over valid endpoints
+    agg = aggregate_endpoint_metrics(endpoint_eval_map)
+
+    # Format dataframe
+    df = pd.DataFrame(endpoint_rows)
+
+    logger.info(
+        "Computed mask-aware metrics across %d endpoints (valid=%d, excluded=%d). "
+        "Macro ROC-AUC: %s | Macro PR-AUC: %s",
+        len(endpoint_order),
+        agg["valid_endpoints_count"],
+        len(agg["excluded_endpoints"]),
+        agg["macro_roc_auc"]["formatted_sem"],
+        agg["macro_pr_auc"]["formatted_sem"],
+    )
+    return df, agg
+
+
+def save_metric_artifacts(
+    output_dir: Path | str,
+    endpoint_df: Any,
+    aggregate_dict: Mapping[str, Any],
+) -> dict[str, str]:
+    """Save endpoint metrics CSV and aggregate metrics JSON atomically.
+
+    Args:
+        output_dir: Destination directory.
+        endpoint_df: Pandas DataFrame containing endpoint metrics.
+        aggregate_dict: Dictionary containing macro aggregation metrics.
+
+    Returns:
+        Dictionary mapping artifact keys to their file paths.
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = out_dir / "endpoint_metrics.csv"
+    json_path = out_dir / "aggregate_metrics.json"
+
+    endpoint_df.to_csv(csv_path, index=False)
+
+    from src.data.common import write_json
+    write_json(json_path, aggregate_dict)
+
+    logger.info("Saved metric artifacts: %s and %s", csv_path.name, json_path.name)
+    return {
+        "endpoint_metrics_csv": str(csv_path),
+        "aggregate_metrics_json": str(json_path),
+    }
+
+
+
