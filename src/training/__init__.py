@@ -4,6 +4,11 @@ Student 3 Module: Molecular Toxicity Prediction via Chemical Fingerprints
 and Molecular Graph Networks.
 """
 
+from src.training.checkpoint import (
+    load_checkpoint,
+    load_model_from_checkpoint,
+    save_checkpoint,
+)
 from src.training.config import TrainingConfig
 from src.training.early_stopping import EarlyStopping
 from src.training.losses import (
@@ -24,7 +29,10 @@ __all__ = [
     "evaluate",
     "get_device",
     "get_system_info",
+    "load_checkpoint",
+    "load_model_from_checkpoint",
     "masked_bce_loss",
+    "save_checkpoint",
     "set_seed",
     "step_scheduler",
     "train_one_epoch",

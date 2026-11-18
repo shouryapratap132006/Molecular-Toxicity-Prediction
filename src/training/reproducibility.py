@@ -71,11 +71,11 @@ def get_device(preference: str = "auto") -> torch.device:
 def get_system_info() -> dict[str, Any]:
     """Collect runtime environment metadata for audit and reproducibility."""
     info: dict[str, Any] = {
-        "python_version": sys.version,
-        "platform": platform.platform(),
-        "torch_version": torch.__version__,
-        "cuda_available": torch.cuda.is_available(),
-        "mps_available": torch.backends.mps.is_available(),
+        "python_version": str(sys.version),
+        "platform": str(platform.platform()),
+        "torch_version": str(torch.__version__),
+        "cuda_available": bool(torch.cuda.is_available()),
+        "mps_available": bool(torch.backends.mps.is_available()),
     }
     if torch.cuda.is_available():
         info["cuda_device_count"] = torch.cuda.device_count()
