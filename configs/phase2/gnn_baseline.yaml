@@ -1,0 +1,30 @@
+experiment_id: gnn_baseline
+description: "Phase 2 MolecularGNN default baseline (hidden_dim=128, layers=3, mean pooling, seed=42)"
+seed: 42
+hidden_dim: 128
+num_layers: 3
+dropout: 0.1
+pooling: mean
+activation: relu
+norm: layer
+residual: true
+learning_rate: 0.001
+weight_decay: 0.0001
+batch_size: 32
+epochs: 100
+early_stopping_patience: 10
+early_stopping_min_delta: 0.0
+scheduler: ReduceLROnPlateau
+scheduler_factor: 0.5
+scheduler_patience: 4
+min_lr: 0.000001
+gradient_clip: 1.0
+use_pos_weights: false
+device: auto
+num_tasks: 12
+evaluate_on_test: true
+output_dir: results/phase2/experiments
+tags:
+  - baseline
+  - phase2
+  - seed42
