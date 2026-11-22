@@ -1,0 +1,99 @@
+{
+  "evaluation_name": "Phase 2 MolecularGNN Final Quarantined Test Evaluation",
+  "evaluator": "Student 4 (Final Evaluation & Test-Set Validation Engineer)",
+  "timestamp_utc": "2026-11-22T07:24:41.715993+00:00",
+  "checkpoint_verification": {
+    "checkpoint_path": "/Users/bulbulagarwalla/Downloads/Aml_Project/results/phase2/experiments/gnn_baseline/checkpoints/best_gnn.pt",
+    "sha256": "abba9fb7d66fd9bc24673b71a0645d9e7a88377a291de9e20c88732be8c8e1c8",
+    "size_bytes": 4892109,
+    "sha256_match_expected": false,
+    "epoch": 10,
+    "best_val_loss": 0.2771483886508396,
+    "total_parameters": 402956,
+    "evaluation_mode": true
+  },
+  "model_architecture": {
+    "model_type": "MolecularGNN",
+    "node_feature_dim": 19,
+    "edge_feature_dim": 18,
+    "hidden_dim": 128,
+    "num_layers": 3,
+    "pooling": "mean",
+    "dropout": 0.1,
+    "norm": "layer",
+    "residual": true,
+    "activation": "relu",
+    "output_endpoints": 12
+  },
+  "dataset_verification": {
+    "test_molecules_count": 783,
+    "expected_test_molecules": 783,
+    "count_matches_expected": true,
+    "total_valid_observations": 7175,
+    "total_missing_observations": 2221,
+    "valid_observation_density": 0.7636
+  },
+  "evaluation_protocol": {
+    "quarantined_test_set": true,
+    "zero_test_label_leakage": true,
+    "batch_size": 64,
+    "device": "cpu",
+    "fixed_decision_threshold": 0.5,
+    "roc_auc_method": "Mann-Whitney U rank statistic with average tie ranking",
+    "pr_auc_method": "Average Precision (rectangular integration of precision w.r.t recall)",
+    "macro_aggregation_method": "Sample mean over valid endpoints with sample SD (ddof=1), SEM, and 95% Student-t CI",
+    "missing_label_policy": "Strict boolean masking; NaNs excluded; missing values never replaced with zero"
+  },
+  "macro_metrics": {
+    "valid_endpoints_count": 12,
+    "excluded_endpoints_count": 0,
+    "excluded_endpoints": [],
+    "macro_roc_auc": {
+      "k": 12,
+      "mean": 0.6749665057793323,
+      "sd": 0.06902199811554302,
+      "sem": 0.019924934596007304,
+      "ci_95_lower": 0.6311117247335202,
+      "ci_95_upper": 0.7188212868251443,
+      "ci_95_half_width": 0.04385478104581208,
+      "formatted_sem": "0.6750 \u00b1 0.0199 (SEM, K=12)",
+      "formatted_sd": "0.6750 \u00b1 0.0690 (SD, K=12)",
+      "formatted_ci95": "0.6750 (95% CI [0.6311, 0.7188], K=12)"
+    },
+    "macro_pr_auc": {
+      "k": 12,
+      "mean": 0.22227081492164946,
+      "sd": 0.09956200094582383,
+      "sem": 0.028741074023564583,
+      "ci_95_lower": 0.15901171099578382,
+      "ci_95_upper": 0.2855299188475151,
+      "ci_95_half_width": 0.06325910392586565,
+      "formatted_sem": "0.2223 \u00b1 0.0287 (SEM, K=12)",
+      "formatted_sd": "0.2223 \u00b1 0.0996 (SD, K=12)",
+      "formatted_ci95": "0.2223 (95% CI [0.1590, 0.2855], K=12)"
+    }
+  },
+  "supplementary_threshold_analysis": {
+    "threshold": 0.5,
+    "mean_balanced_accuracy": 0.5301666666666667,
+    "mean_f1": 0.08700000000000001
+  },
+  "error_analysis_highlights": {
+    "best_roc_endpoint": "NR-AhR",
+    "best_roc_value": 0.8180958132045089,
+    "worst_roc_endpoint": "SR-HSE",
+    "worst_roc_value": 0.6308686477932126,
+    "prevalence_pr_correlation": 0.569
+  },
+  "environment": {
+    "python": "3.13.6",
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "rdkit": "2026.9.1",
+    "matplotlib": "3.11.2",
+    "PyYAML": "6.0.3",
+    "requests": "2.34.2",
+    "pytest": "9.1.1"
+  },
+  "warnings_or_skipped_operations": []
+}

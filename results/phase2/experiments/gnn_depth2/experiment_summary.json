@@ -1,0 +1,9 @@
+{
+  "experiment_id": "gnn_depth2",
+  "status": "SUCCESS",
+  "runtime_seconds": 12.530810832977295,
+  "best_epoch": 10,
+  "best_val_loss": 0.2782739369050048,
+  "checkpoint": "results/phase2/experiments/gnn_depth2/checkpoints/best_gnn.pt",
+  "test_metrics": null
+}

@@ -1,0 +1,37 @@
+{
+  "activation": "relu",
+  "batch_size": 32,
+  "checkpoint_dir": "results/phase2/experiments/gnn_baseline/checkpoints",
+  "device": "auto",
+  "dropout": 0.1,
+  "early_stopping_min_delta": 0.0,
+  "early_stopping_patience": 8,
+  "epochs": 10,
+  "extra_metadata": {
+    "description": "Phase 2 MolecularGNN default baseline (hidden_dim=128, layers=3, mean pooling, seed=42)",
+    "experiment_id": "gnn_baseline",
+    "tags": [
+      "baseline",
+      "phase2",
+      "seed42"
+    ]
+  },
+  "gradient_clip": 1.0,
+  "hidden_dim": 128,
+  "learning_rate": 0.001,
+  "log_dir": "results/phase2/experiments/gnn_baseline/logs",
+  "max_pos_weight": 50.0,
+  "min_lr": 1e-06,
+  "norm": "layer",
+  "num_layers": 3,
+  "num_tasks": 12,
+  "plot_dir": "results/phase2/experiments/gnn_baseline/plots",
+  "pooling": "mean",
+  "residual": true,
+  "scheduler": "ReduceLROnPlateau",
+  "scheduler_factor": 0.5,
+  "scheduler_patience": 4,
+  "seed": 42,
+  "use_pos_weights": false,
+  "weight_decay": 0.0001
+}
