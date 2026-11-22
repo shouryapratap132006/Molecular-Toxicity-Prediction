@@ -1,0 +1,9 @@
+{
+  "experiment_id": "gnn_pos_weighted",
+  "status": "SUCCESS",
+  "runtime_seconds": 17.379755973815918,
+  "best_epoch": 5,
+  "best_val_loss": 1.4557359976220685,
+  "checkpoint": "results/phase2/experiments/gnn_pos_weighted/checkpoints/best_gnn.pt",
+  "test_metrics": null
+}

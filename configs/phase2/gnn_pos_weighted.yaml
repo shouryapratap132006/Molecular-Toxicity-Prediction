@@ -23,7 +23,7 @@ use_pos_weights: true
 max_pos_weight: 50.0
 device: auto
 num_tasks: 12
-evaluate_on_test: true
+evaluate_on_test: false
 output_dir: results/phase2/experiments
 tags:
   - ablation

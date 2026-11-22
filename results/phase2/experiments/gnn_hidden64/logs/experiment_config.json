@@ -1,0 +1,37 @@
+{
+  "activation": "relu",
+  "batch_size": 32,
+  "checkpoint_dir": "results/phase2/experiments/gnn_hidden64/checkpoints",
+  "device": "auto",
+  "dropout": 0.1,
+  "early_stopping_min_delta": 0.0,
+  "early_stopping_patience": 8,
+  "epochs": 10,
+  "extra_metadata": {
+    "description": "Hidden dimension ablation: hidden_dim=64, layers=3, mean pooling, seed=42",
+    "experiment_id": "gnn_hidden64",
+    "tags": [
+      "ablation",
+      "hidden_dim",
+      "hidden64"
+    ]
+  },
+  "gradient_clip": 1.0,
+  "hidden_dim": 64,
+  "learning_rate": 0.001,
+  "log_dir": "results/phase2/experiments/gnn_hidden64/logs",
+  "max_pos_weight": 50.0,
+  "min_lr": 1e-06,
+  "norm": "layer",
+  "num_layers": 3,
+  "num_tasks": 12,
+  "plot_dir": "results/phase2/experiments/gnn_hidden64/plots",
+  "pooling": "mean",
+  "residual": true,
+  "scheduler": "ReduceLROnPlateau",
+  "scheduler_factor": 0.5,
+  "scheduler_patience": 4,
+  "seed": 42,
+  "use_pos_weights": false,
+  "weight_decay": 0.0001
+}

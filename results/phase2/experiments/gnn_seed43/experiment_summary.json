@@ -1,0 +1,9 @@
+{
+  "experiment_id": "gnn_seed43",
+  "status": "SUCCESS",
+  "runtime_seconds": 17.346139192581177,
+  "best_epoch": 8,
+  "best_val_loss": 0.2819924643953675,
+  "checkpoint": "results/phase2/experiments/gnn_seed43/checkpoints/best_gnn.pt",
+  "test_metrics": null
+}

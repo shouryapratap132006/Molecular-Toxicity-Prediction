@@ -92,18 +92,18 @@ def execute_experiment(
 
             eval_cfg = EvaluationConfig(
                 checkpoint_path=best_ckpt,
-                expected_sha256="",  # Dynamic checkpoint evaluation
+                expected_sha256=None,  # Dynamic checkpoint evaluation
                 output_dir=str(Path(config.output_dir) / exp_id / "test_evaluation"),
                 figures_dir=str(Path(config.output_dir) / exp_id / "figures"),
                 device=config.device,
             )
             eval_res = run_evaluation_pipeline(eval_cfg)
-            agg = eval_res["metrics"]["aggregate"]
+            agg = eval_res["aggregate_metrics"]
             test_metrics = {
-                "roc_auc_mean": agg["roc_auc"]["mean"],
-                "roc_auc_sem": agg["roc_auc"]["sem"],
-                "pr_auc_mean": agg["pr_auc"]["mean"],
-                "pr_auc_sem": agg["pr_auc"]["sem"],
+                "roc_auc_mean": agg["macro_roc_auc"]["mean"],
+                "roc_auc_sem": agg["macro_roc_auc"]["sem"],
+                "pr_auc_mean": agg["macro_pr_auc"]["mean"],
+                "pr_auc_sem": agg["macro_pr_auc"]["sem"],
             }
             logger.info("Test Evaluation: ROC-AUC=%.4f +/- %.4f, PR-AUC=%.4f +/- %.4f",
                         test_metrics["roc_auc_mean"], test_metrics["roc_auc_sem"],
@@ -125,7 +125,7 @@ def execute_experiment(
             total_epochs=train_res.get("total_epochs_trained"),
             stopped_early=train_res.get("stopped_early"),
             checkpoint_path=train_res["checkpoints"].get("best"),
-            training_log_path=str(train_res["artifacts"].get("history_csv")),
+            training_log_path=str(train_res.get("logs", {}).get("history_csv")),
             test_metrics=test_metrics,
         )
         registry.register(record)

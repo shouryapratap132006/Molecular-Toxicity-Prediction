@@ -1,0 +1,14 @@
+{
+  "experiment_id": "gnn_baseline",
+  "status": "SUCCESS",
+  "runtime_seconds": 18.190185070037842,
+  "best_epoch": 10,
+  "best_val_loss": 0.2771483886508396,
+  "checkpoint": "results/phase2/experiments/gnn_baseline/checkpoints/best_gnn.pt",
+  "test_metrics": {
+    "roc_auc_mean": 0.6749665057793323,
+    "roc_auc_sem": 0.019924934596007304,
+    "pr_auc_mean": 0.22227081492164946,
+    "pr_auc_sem": 0.028741074023564583
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "experiment_id": "gnn_hidden64",
+  "status": "SUCCESS",
+  "runtime_seconds": 9.146306991577148,
+  "best_epoch": 9,
+  "best_val_loss": 0.28086294673581413,
+  "checkpoint": "results/phase2/experiments/gnn_hidden64/checkpoints/best_gnn.pt",
+  "test_metrics": null
+}

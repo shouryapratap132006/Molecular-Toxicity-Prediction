@@ -1,0 +1,9 @@
+{
+  "experiment_id": "gnn_sum_pooling",
+  "status": "SUCCESS",
+  "runtime_seconds": 17.292212963104248,
+  "best_epoch": 8,
+  "best_val_loss": 0.3047469209481176,
+  "checkpoint": "results/phase2/experiments/gnn_sum_pooling/checkpoints/best_gnn.pt",
+  "test_metrics": null
+}

@@ -1,0 +1,7 @@
+experiment_id,status,seed,hidden_dim,num_layers,pooling,use_pos_weights,best_epoch,best_val_loss,test_roc_auc,test_pr_auc,runtime_s
+gnn_baseline,SUCCESS,42,128,3,mean,False,10,0.2771483886508396,0.6749665057793323,0.22227081492164946,18.19
+gnn_depth2,SUCCESS,42,128,2,mean,False,10,0.2782739369050048,,,12.53
+gnn_hidden64,SUCCESS,42,64,3,mean,False,9,0.28086294673581413,,,9.15
+gnn_pos_weighted,SUCCESS,42,128,3,mean,True,5,1.4557359976220685,,,17.38
+gnn_seed43,SUCCESS,43,128,3,mean,False,8,0.2819924643953675,,,17.35
+gnn_sum_pooling,SUCCESS,42,128,3,sum,False,8,0.3047469209481176,,,17.29

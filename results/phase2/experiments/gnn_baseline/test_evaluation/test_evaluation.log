@@ -1,0 +1,21 @@
+2026-11-22 12:54:38,651 [INFO] src.evaluation.phase2_test_evaluation: Initialized Phase 2 test evaluation logger. Target: results/phase2/experiments/gnn_baseline/test_evaluation/test_evaluation.log
+2026-11-22 12:54:38,652 [INFO] src.evaluation.phase2_test_evaluation: ============================================================
+2026-11-22 12:54:38,652 [INFO] src.evaluation.phase2_test_evaluation: Initiating Phase 2 MolecularGNN Final Quarantined Test Evaluation
+2026-11-22 12:54:38,652 [INFO] src.evaluation.phase2_test_evaluation: Evaluator: Student 4 | Quarantined Test Size: 783
+2026-11-22 12:54:38,652 [INFO] src.evaluation.phase2_test_evaluation: ============================================================
+2026-11-22 12:54:38,665 [INFO] src.evaluation.phase2_test_evaluation: Verified Student 3 checkpoint successfully: best_gnn.pt (epoch=10, best_val_loss=0.2771, SHA256=abba9fb7d66f...)
+2026-11-22 12:54:39,139 [INFO] src.evaluation.phase2_test_evaluation: Initiating batched inference on 783 quarantined test graphs (batch_size=64)...
+2026-11-22 12:54:39,219 [INFO] src.evaluation.phase2_test_evaluation: Canonical test split ordering verified: 100% 1-to-1 match with scaffold split.
+2026-11-22 12:54:39,219 [INFO] src.evaluation.phase2_test_evaluation: Inference and validation completed successfully. Shape: (783, 12), Total Valid Entries: 7175 / 9396 (76.36%)
+2026-11-22 12:54:39,222 [INFO] src.evaluation.phase2_test_evaluation: Saved inference arrays to results/phase2/experiments/gnn_baseline/test_evaluation
+2026-11-22 12:54:39,227 [INFO] src.evaluation.phase2_test_evaluation: Computed mask-aware metrics across 12 endpoints (valid=12, excluded=0). Macro ROC-AUC: 0.6750 ± 0.0199 (SEM, K=12) | Macro PR-AUC: 0.2223 ± 0.0287 (SEM, K=12)
+2026-11-22 12:54:39,228 [INFO] src.evaluation.phase2_test_evaluation: Saved metric artifacts: endpoint_metrics.csv and aggregate_metrics.json
+2026-11-22 12:54:39,229 [INFO] src.evaluation.phase2_test_evaluation: Computed supplementary threshold metrics at t=0.50. Mean Balanced Acc: 0.5302 | Mean F1: 0.0870
+2026-11-22 12:54:41,715 [INFO] src.evaluation.phase2_test_evaluation: Successfully generated all 7 publication-quality figures in results/phase2/experiments/gnn_baseline/figures
+2026-11-22 12:54:41,722 [INFO] src.evaluation.phase2_test_evaluation: ============================================================
+2026-11-22 12:54:41,722 [INFO] src.evaluation.phase2_test_evaluation: Phase 2 Test Evaluation Completed Successfully!
+2026-11-22 12:54:41,722 [INFO] src.evaluation.phase2_test_evaluation: Macro ROC-AUC: 0.6750 ± 0.0199 (SEM, K=12)
+2026-11-22 12:54:41,722 [INFO] src.evaluation.phase2_test_evaluation: Macro PR-AUC: 0.2223 ± 0.0287 (SEM, K=12)
+2026-11-22 12:54:41,722 [INFO] src.evaluation.phase2_test_evaluation: Figures Directory: results/phase2/experiments/gnn_baseline/figures (7 figures generated)
+2026-11-22 12:54:41,722 [INFO] src.evaluation.phase2_test_evaluation: Artifacts Directory: results/phase2/experiments/gnn_baseline/test_evaluation
+2026-11-22 12:54:41,722 [INFO] src.evaluation.phase2_test_evaluation: ============================================================

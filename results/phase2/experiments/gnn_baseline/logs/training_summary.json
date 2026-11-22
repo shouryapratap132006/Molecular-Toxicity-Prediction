@@ -1,0 +1,27 @@
+{
+  "best_epoch": 10,
+  "best_val_loss": 0.2771483886508396,
+  "checkpoints": {
+    "best": "results/phase2/experiments/gnn_baseline/checkpoints/best_gnn.pt",
+    "last": "results/phase2/experiments/gnn_baseline/checkpoints/last_gnn.pt"
+  },
+  "device": "cpu",
+  "final_train_loss": 0.21329866331381292,
+  "final_val_loss": 0.2771483886508396,
+  "logs": {
+    "config_json": "results/phase2/experiments/gnn_baseline/logs/experiment_config.json",
+    "history_csv": "results/phase2/experiments/gnn_baseline/logs/training_history.csv"
+  },
+  "plots": {
+    "curves_png": "results/phase2/experiments/gnn_baseline/plots/training_curves.png"
+  },
+  "stopped_early": false,
+  "system_info": {
+    "cuda_available": false,
+    "mps_available": false,
+    "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+    "python_version": "3.13.6 (v3.13.6:4e665351082, Aug  6 2025, 11:22:35) [Clang 16.0.0 (clang-1600.0.26.6)]",
+    "torch_version": "2.15.0"
+  },
+  "total_epochs_trained": 10
+}
