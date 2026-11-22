@@ -209,12 +209,29 @@ def create_deck():
     p2.font.color.rgb = RGBColor(0x94, 0xA3, 0xB8)
     p2.space_before = Pt(12)
 
-    tb_foot = s1.shapes.add_textbox(Inches(1.0), Inches(5.8), Inches(11.3), Inches(0.6))
-    p = tb_foot.text_frame.paragraphs[0]
-    p.text = "Newton School of Technology  |  Department of Computer Science & AI  |  Academic Year 2026"
-    p.font.name = FONT_BODY
-    p.font.size = Pt(14)
-    p.font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
+    tb_foot = s1.shapes.add_textbox(Inches(1.0), Inches(5.5), Inches(11.3), Inches(1.2))
+    tf_f = tb_foot.text_frame
+    tf_f.word_wrap = True
+    p = tf_f.paragraphs[0]
+    p.text = "Presenting Team: Amogha Raj Sindur  •  Bulbul Agarwalla  •  Shourya Pratap  •  Kanishka Dubey"
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(15)
+    p.font.bold = True
+    p.font.color.rgb = WHITE
+
+    p2 = tf_f.add_paragraph()
+    p2.text = "Contributing Member: Aditya Yadav"
+    p2.font.name = FONT_BODY
+    p2.font.size = Pt(12)
+    p2.font.color.rgb = RGBColor(0x94, 0xA3, 0xB8)
+    p2.space_before = Pt(4)
+
+    p3 = tf_f.add_paragraph()
+    p3.text = "Newton School of Technology  |  Department of Computer Science & AI  |  Academic Year 2026"
+    p3.font.name = FONT_BODY
+    p3.font.size = Pt(12)
+    p3.font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
+    p3.space_before = Pt(4)
 
     add_notes(s1, "Welcome the viva committee. Introduce the project: an empirical comparison of classical descriptor-based ML against edge-aware graph neural networks on the Tox21 benchmark under a leak-free Bemis-Murcko scaffold split.")
 
@@ -276,15 +293,15 @@ def create_deck():
     add_header(s3, "Team and module ownership", "CONTRIBUTORS", COLOR_CONTRIB)
 
     team_members = [
-        ("SP", "Shourya Pratap", "Data Engineering & Graphs",
+        ("AS", "Amogha Raj Sindur", "Student 1: Data Engineering",
          ["RDKit sanitization, 7,823 mols", "Bemis-Murcko scaffold splitting", "Atom and bond featurization"], COLOR_DATA),
-        ("BA", "Bulbul Agarwalla", "GNN Architecture & MPNN",
+        ("BA", "Bulbul Agarwalla", "Student 2: GNN Architecture",
          ["MolecularGNN implementation", "Edge-conditioned message passing", "Pooling and 12-task head"], COLOR_ARCH),
-        ("AS", "Amogha Raj Sindur", "Training Pipeline & Loss",
+        ("SP", "Shourya Pratap", "Student 3: Training Pipeline",
          ["Masked BCEWithLogits loss", "AdamW, scheduler, early stopping", "SHA-256 verified checkpoints"], COLOR_TRAIN),
-        ("KD", "Kanishka Dubey", "Validation & Test Metrics",
+        ("KD", "Kanishka Dubey", "Student 4: Evaluation & Validation",
          ["Quarantined test evaluation (N=783)", "Mask-aware ROC-AUC and PR-AUC", "Zero test leakage, figures"], COLOR_EVAL),
-        ("AY", "Aditya Yadav", "Integration & Final Paper",
+        ("AY", "Aditya Yadav", "Student 5: Integration & Paper",
          ["YAML experiment orchestrator", "Ablations and benchmark comparison", "IEEE manuscript and deck"], COLOR_BENCH),
     ]
 
