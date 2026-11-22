@@ -1,684 +1,1217 @@
-"""Build the Phase 2 Final Project Presentation deck (18 slides).
+"""Generate an executive-grade, student-wise Phase 1 & Phase 2 presentation deck.
 
-Student 5 — Integration, Experiments, Final IEEE Report & Presentation Owner.
-
-Slides:
-  1. Title & Team Roles
-  2. Problem & Motivation
-  3. Dataset: Tox21 Curation & Endpoints
-  4. End-to-End Two-Phase Pipeline
-  5. Phase 1: Feature Engineering (Morgan FP + Descriptors)
-  6. Phase 1: Classical ML Models & Scaffold Splitting
-  7. Phase 1: Benchmark Results (Table)
-  8. Phase 2: Molecular Graph Representation
-  9. Phase 2: GNN Architecture (MolecularGNN)
- 10. Phase 2: Message Passing Mechanism
- 11. Phase 2: Training Pipeline & Mask-Aware Loss
- 12. Phase 2: Ablation Matrix Results
- 13. Phase 2: Final Test Evaluation
- 14. Cross-Phase Comparison: Phase 1 vs Phase 2
- 15. Endpoint-Level Analysis
- 16. Discussion & Limitations
- 17. Conclusion & Future Work
- 18. Q&A / Thank You
+Student-by-Student Structure:
+  Slide 1:  Executive Title & Team Identification
+  Slide 2:  Executive Overview & Two-Phase Scientific Vision (Big KPI Cards)
+  Slide 3:  Team Architecture & Interface Contracts (Students 1-5 Matrix)
+  Slide 4:  Student 1 — Chemical Preprocessing & Assay Missingness (with Figure)
+  Slide 5:  Student 1 — Bemis-Murcko Scaffold Partitioning & Leakage Prevention
+  Slide 6:  Student 1 — Molecular Graph Featurization (19 Node + 18 Edge Features)
+  Slide 7:  Student 2 — MolecularGNN Architecture Overview (with Pipeline Diagram)
+  Slide 8:  Student 2 — Edge-Aware Message Passing & Residual LayerNorm Mechanics
+  Slide 9:  Student 2 — Graph-Level Readout Pooling & 12-Task Prediction Head
+  Slide 10: Student 3 — Multi-Task Masked BCE Loss Formulation
+  Slide 11: Student 3 — Optimization Protocol, Learning Rate Schedules & Early Stopping
+  Slide 12: Student 3 — Atomic Checkpointing, Verification & Reproducibility
+  Slide 13: Student 4 — Quarantined Test Evaluation Protocol (N=783)
+  Slide 14: Student 4 — Final Test ROC-AUC Across 12 Endpoints (with ROC Plot)
+  Slide 15: Student 4 — Precision-Recall AUC vs Positive Prevalence (with PR Plot)
+  Slide 16: Student 4 — Continuous Prediction Probability Distributions (with Distribution Plot)
+  Slide 17: Student 5 — Centralized YAML Experiment Runner & Tracking Registry
+  Slide 18: Student 5 — Systematic Architectural Ablations (with Ablation Plot)
+  Slide 19: Student 5 — Cross-Paradigm Benchmark: Phase 1 vs Phase 2 (with Benchmark Plot)
+  Slide 20: Conclusion, Technical Contributions & Viva Defense Q&A
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-
 from pptx import Presentation
 from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-from pptx.util import Inches, Pt, Emu
+from pptx.util import Inches, Pt
 
-OUT = Path("reports/final_presentation/phase2_final_presentation.pptx")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+FIG_DIR = PROJECT_ROOT / "reports/final_ieee_report/figures"
+OUT_PATH = PROJECT_ROOT / "reports/final_presentation/phase2_final_presentation.pptx"
 
-# Color palette
-INK = RGBColor(0x1B, 0x2A, 0x41)
-INK_SOFT = RGBColor(0x2C, 0x3E, 0x5A)
-TEXT = RGBColor(0x22, 0x2B, 0x36)
-MUTED = RGBColor(0x5C, 0x67, 0x73)
+# Modern Executive Color Palette
+BG_DARK = RGBColor(0x0F, 0x17, 0x2A)       # Deep slate 900
+BG_LIGHT = RGBColor(0xF8, 0xFA, 0xFC)      # Slate 50
+TEXT_MAIN = RGBColor(0x0F, 0x17, 0x2A)     # Dark slate
+TEXT_MUTED = RGBColor(0x64, 0x74, 0x8B)    # Slate 500
+TEXT_LIGHT = RGBColor(0xE2, 0xE8, 0xF0)    # Slate 200
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-TINT = RGBColor(0xF1, 0xF4, 0xF8)
-BLUE = RGBColor(0x00, 0x72, 0xB2)
-ORANGE = RGBColor(0xE6, 0x9F, 0x00)
-GREEN = RGBColor(0x00, 0x9E, 0x73)
-VERMIL = RGBColor(0xD5, 0x5E, 0x00)
-HEAD_FONT, BODY_FONT = "Cambria", "Calibri"
 
-prs = Presentation()
-prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
+CARD_BG = RGBColor(0xFF, 0xFF, 0xFF)
+CARD_BORDER = RGBColor(0xCB, 0xD5, 0xE1)   # Slate 300
+HIGHLIGHT_BG = RGBColor(0xF1, 0xF5, 0xF9)
 
+# Student-Specific Accent Themes
+COLOR_S1 = RGBColor(0x0D, 0x94, 0x88)  # Teal (Student 1)
+COLOR_S2 = RGBColor(0x25, 0x63, 0xEB)  # Royal Blue (Student 2)
+COLOR_S3 = RGBColor(0x7C, 0x3A, 0xED)  # Purple (Student 3)
+COLOR_S4 = RGBColor(0xDC, 0x26, 0x26)  # Red / Crimson (Student 4)
+COLOR_S5 = RGBColor(0xEA, 0x58, 0x0C)  # Amber / Orange (Student 5)
+COLOR_NEUTRAL = RGBColor(0x33, 0x41, 0x55)
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
-
-def _add_bg(slide, color=TINT):
-    bg = slide.background
-    fill = bg.fill
-    fill.solid()
-    fill.fore_color.rgb = color
+FONT_HEAD = "Arial"
+FONT_BODY = "Calibri"
 
 
-def _tb(slide, left, top, width, height):
-    return slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
+def create_deck():
+    prs = Presentation()
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
 
+    def set_slide_bg(slide, color):
+        bg = slide.background
+        fill = bg.fill
+        fill.solid()
+        fill.fore_color.rgb = color
 
-def _set_para(para, text, font_name=BODY_FONT, size=18, bold=False, color=TEXT, align=PP_ALIGN.LEFT):
-    para.text = text
-    para.font.name = font_name
-    para.font.size = Pt(size)
-    para.font.bold = bold
-    para.font.color.rgb = color
-    para.alignment = align
-    para.space_after = Pt(4)
+    def add_header(slide, title_text, category_badge, badge_color):
+        # Header banner shape
+        banner = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(13.333), Inches(1.15))
+        banner.fill.solid()
+        banner.fill.fore_color.rgb = BG_DARK
+        banner.line.fill.background()
 
+        # Accent bar on top
+        bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(13.333), Inches(0.08))
+        bar.fill.solid()
+        bar.fill.fore_color.rgb = badge_color
+        bar.line.fill.background()
 
-def _add_title_bar(slide, text, subtitle=None):
-    from pptx.enum.shapes import MSO_SHAPE
-    shape = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), prs.slide_width, Inches(1.15)
-    )
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = INK
-    shape.line.fill.background()
+        # Category pill badge
+        pill = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.2), Inches(3.2), Inches(0.28))
+        pill.fill.solid()
+        pill.fill.fore_color.rgb = badge_color
+        pill.line.fill.background()
+        p = pill.text_frame.paragraphs[0]
+        p.text = category_badge.upper()
+        p.font.name = FONT_HEAD
+        p.font.size = Pt(11)
+        p.font.bold = True
+        p.font.color.rgb = WHITE
+        p.alignment = PP_ALIGN.CENTER
+        pill.text_frame.margin_top = Inches(0.02)
 
-    tf = shape.text_frame
+        # Title text
+        tb = slide.shapes.add_textbox(Inches(0.8), Inches(0.52), Inches(11.5), Inches(0.55))
+        p = tb.text_frame.paragraphs[0]
+        p.text = title_text
+        p.font.name = FONT_HEAD
+        p.font.size = Pt(22)
+        p.font.bold = True
+        p.font.color.rgb = WHITE
+        tb.text_frame.margin_left = Inches(0)
+        tb.text_frame.margin_top = Inches(0)
+
+    def add_card(slide, left, top, width, height, title=None, border_color=CARD_BORDER, bg_color=CARD_BG):
+        card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
+        card.fill.solid()
+        card.fill.fore_color.rgb = bg_color
+        card.line.color.rgb = border_color
+        card.line.width = Pt(1.5)
+
+        if title:
+            tb = slide.shapes.add_textbox(Inches(left + 0.25), Inches(top + 0.18), Inches(width - 0.5), Inches(0.4))
+            p = tb.text_frame.paragraphs[0]
+            p.text = title
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(15)
+            p.font.bold = True
+            p.font.color.rgb = TEXT_MAIN
+        return card
+
+    def add_kpi_card(slide, left, top, width, height, value, label, subtext="", accent_color=COLOR_S2):
+        card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height))
+        card.fill.solid()
+        card.fill.fore_color.rgb = WHITE
+        card.line.color.rgb = CARD_BORDER
+        card.line.width = Pt(1.5)
+
+        # Accent strip
+        strip = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(0.1))
+        strip.fill.solid()
+        strip.fill.fore_color.rgb = accent_color
+        strip.line.fill.background()
+
+        tb = slide.shapes.add_textbox(Inches(left + 0.15), Inches(top + 0.18), Inches(width - 0.3), Inches(height - 0.25))
+        tf = tb.text_frame
+        tf.word_wrap = True
+
+        p1 = tf.paragraphs[0]
+        p1.text = value
+        p1.font.name = FONT_HEAD
+        p1.font.size = Pt(28)
+        p1.font.bold = True
+        p1.font.color.rgb = accent_color
+        p1.alignment = PP_ALIGN.CENTER
+
+        p2 = tf.add_paragraph()
+        p2.text = label
+        p2.font.name = FONT_HEAD
+        p2.font.size = Pt(12)
+        p2.font.bold = True
+        p2.font.color.rgb = TEXT_MAIN
+        p2.alignment = PP_ALIGN.CENTER
+
+        if subtext:
+            p3 = tf.add_paragraph()
+            p3.text = subtext
+            p3.font.name = FONT_BODY
+            p3.font.size = Pt(10)
+            p3.font.color.rgb = TEXT_MUTED
+            p3.alignment = PP_ALIGN.CENTER
+
+    def add_notes(slide, text):
+        slide.notes_slide.notes_text_frame.text = text
+
+    # =========================================================================
+    # SLIDE 1: Title Slide (Executive Widescreen)
+    # =========================================================================
+    s1 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s1, BG_DARK)
+
+    # Accent decorative top bar
+    bar1 = s1.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(13.333), Inches(0.12))
+    bar1.fill.solid()
+    bar1.fill.fore_color.rgb = COLOR_S2
+    bar1.line.fill.background()
+
+    # Category Pill
+    pill1 = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.0), Inches(1.0), Inches(4.5), Inches(0.4))
+    pill1.fill.solid()
+    pill1.fill.fore_color.rgb = COLOR_S2
+    pill1.line.fill.background()
+    p = pill1.text_frame.paragraphs[0]
+    p.text = "B.TECH RESEARCH FINAL PROJECT DEFENSE"
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(12)
+    p.font.bold = True
+    p.font.color.rgb = WHITE
+    p.alignment = PP_ALIGN.CENTER
+
+    # Main Title
+    tb_title = s1.shapes.add_textbox(Inches(1.0), Inches(1.6), Inches(11.3), Inches(1.8))
+    tf = tb_title.text_frame
     tf.word_wrap = True
     p = tf.paragraphs[0]
-    p.text = text
-    p.font.name = HEAD_FONT
+    p.text = "Molecular Toxicity Prediction via Chemical\nFingerprints & Molecular Graph Networks"
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(36)
+    p.font.bold = True
+    p.font.color.rgb = WHITE
+
+    p2 = tf.add_paragraph()
+    p2.text = "A Cross-Paradigm Benchmark of Classical ML vs. Edge-Aware GNNs on Tox21"
+    p2.font.name = FONT_BODY
+    p2.font.size = Pt(18)
+    p2.font.color.rgb = RGBColor(0x94, 0xA3, 0xB8)
+    p2.space_before = Pt(8)
+
+    # Student Cards Container (5 cards for 5 students)
+    students = [
+        ("Student 1", "Shourya Pratap", "Data Engineering & Graphs", COLOR_S1),
+        ("Student 2", "Bulbul Agarwalla", "GNN Architecture & MPNN", COLOR_S2),
+        ("Student 3", "Amogha Raj Sindur", "Training Pipeline & Loss", COLOR_S3),
+        ("Student 4", "Kanishka Dubey", "Validation & Test Metrics", COLOR_S4),
+        ("Student 5", "Aditya Yadav", "Integration & Final Paper", COLOR_S5),
+    ]
+
+    card_w, card_h = 2.15, 2.2
+    for idx, (role, name, resp, color) in enumerate(students):
+        c_left = 1.0 + idx * 2.3
+        c_top = 4.2
+        c = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(c_left), Inches(c_top), Inches(card_w), Inches(card_h))
+        c.fill.solid()
+        c.fill.fore_color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+        c.line.color.rgb = color
+        c.line.width = Pt(2.0)
+
+        tb_card = s1.shapes.add_textbox(Inches(c_left + 0.1), Inches(c_top + 0.2), Inches(card_w - 0.2), Inches(card_h - 0.3))
+        tf_c = tb_card.text_frame
+        tf_c.word_wrap = True
+
+        p = tf_c.paragraphs[0]
+        p.text = role.upper()
+        p.font.name = FONT_HEAD
+        p.font.size = Pt(11)
+        p.font.bold = True
+        p.font.color.rgb = color
+
+        p = tf_c.add_paragraph()
+        p.text = name
+        p.font.name = FONT_HEAD
+        p.font.size = Pt(14)
+        p.font.bold = True
+        p.font.color.rgb = WHITE
+        p.space_before = Pt(4)
+
+        p = tf_c.add_paragraph()
+        p.text = resp
+        p.font.name = FONT_BODY
+        p.font.size = Pt(11)
+        p.font.color.rgb = RGBColor(0x94, 0xA3, 0xB8)
+        p.space_before = Pt(6)
+
+    tb_inst = s1.shapes.add_textbox(Inches(1.0), Inches(6.7), Inches(11.3), Inches(0.4))
+    p = tb_inst.text_frame.paragraphs[0]
+    p.text = "Newton School of Technology • Department of Computer Science & AI • Academic Year 2026"
+    p.font.name = FONT_BODY
+    p.font.size = Pt(11)
+    p.font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
+
+    add_notes(s1, "Welcome the viva committee. Introduce the team and state the core research objective: benchmarking classical descriptor ML vs deep molecular graph neural networks under a leak-free Bemis-Murcko scaffold split.")
+
+    # =========================================================================
+    # SLIDE 2: Executive Overview (KPIs & Paradigm Overview)
+    # =========================================================================
+    s2 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s2, BG_LIGHT)
+    add_header(s2, "Executive Summary: Chemical Representation & Benchmark Scope", "PROJECT VISION", COLOR_NEUTRAL)
+
+    # 4 Key Metrics Cards
+    add_kpi_card(s2, 0.8, 1.45, 2.7, 1.4, "7,823", "Cleaned Compounds", "RDKit Sanitized from 7,831", COLOR_S1)
+    add_kpi_card(s2, 3.8, 1.45, 2.7, 1.4, "12", "Tox21 Endpoints", "7 Nuclear Receptors + 5 Stress Pathways", COLOR_S2)
+    add_kpi_card(s2, 6.8, 1.45, 2.7, 1.4, "0.7488", "Phase 1 Champion", "Random Forest (FP + 9 Descriptors)", COLOR_S3)
+    add_kpi_card(s2, 9.8, 1.45, 2.7, 1.4, "0.7395", "Phase 2 MolecularGNN", "Learned Edge-Aware MPNN (Parity)", COLOR_S5)
+
+    # 2 Comparison Columns
+    add_card(s2, 0.8, 3.1, 5.7, 3.9, "Phase 1: Classical Machine Learning", COLOR_S2)
+    tb = s2.shapes.add_textbox(Inches(1.0), Inches(3.7), Inches(5.3), Inches(3.1))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    bullet_items_p1 = [
+        "Fixed-Length Structural Representations: 2,048-bit Morgan Circular Fingerprints (ECFP4 radius=2).",
+        "Continuous Global Properties: 9 standardized RDKit physicochemical descriptors (MolWt, LogP, TPSA, etc.).",
+        "Supervised Classifiers: L2-Logistic Regression, Random Forest (500 trees), XGBoost gradient boosting.",
+        "Outcome: Random Forest + Combined features established the benchmark ceiling at 0.7488 ROC-AUC.",
+        "Limitation: Manual feature engineering; bit hash collisions; no direct edge geometry."
+    ]
+    for i, itm in enumerate(bullet_items_p1):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(13)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(6)
+
+    add_card(s2, 6.8, 3.1, 5.7, 3.9, "Phase 2: Molecular Graph Representation Learning", COLOR_S5)
+    tb = s2.shapes.add_textbox(Inches(7.0), Inches(3.7), Inches(5.3), Inches(3.1))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    bullet_items_p2 = [
+        "Topological Molecular Graphs: G = (V, E) operating directly on atoms and chemical bonds.",
+        "Rich Spatial Features: 19 atom/node attributes + 18 bond/edge attributes.",
+        "Edge-Aware Message Passing: 3-hop spatial neighborhood propagation with residual connections.",
+        "Outcome: MolecularGNN achieves 0.7395 ROC-AUC, demonstrating statistical parity without handcrafted features.",
+        "Core Advantage: End-to-end differentiable representation learning directly from 2D molecular structure."
+    ]
+    for i, itm in enumerate(bullet_items_p2):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(13)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(6)
+
+    add_notes(s2, "Highlight the transition from Phase 1 (fingerprints + tabular models) to Phase 2 (graph networks). Notice that GNN achieves parity with RF while eliminating manual feature engineering.")
+
+    # =========================================================================
+    # SLIDE 3: Team Architecture & Ownership Matrix
+    # =========================================================================
+    s3 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s3, BG_LIGHT)
+    add_header(s3, "Team Architecture: Modular Engineering & Integration Contracts", "TEAM MATRIX", COLOR_NEUTRAL)
+
+    roles_data = [
+        ("STUDENT 1", "Shourya Pratap", "Pre-processing & Graph Featurization",
+         ["RDKit chemical sanitization (7,823 mols)", "Bemis-Murcko canonical scaffold splitting", "19 atom & 18 bond feature extraction", "PyTorch Graph Dataset collation"], COLOR_S1),
+        ("STUDENT 2", "Bulbul Agarwalla", "GNN Architecture & Message Passing",
+         ["MolecularGNN PyTorch implementation", "Atom/bond linear feature encoders", "Edge-conditioned message passing (MPNN)", "Mean/Sum pooling & 12-task prediction head"], COLOR_S2),
+        ("STUDENT 3", "Amogha Raj Sindur", "Multi-Task Training & Optimization",
+         ["Masked BCEWithLogitsLoss engine", "AdamW optimizer & ReduceLROnPlateau", "Early stopping & learning rate scheduling", "SHA-256 verified checkpoint serialization"], COLOR_S3),
+        ("STUDENT 4", "Kanishka Dubey", "Test Evaluation & Error Diagnostics",
+         ["Quarantined test evaluation (N=783)", "Mask-aware ROC-AUC & PR-AUC computation", "Zero test leakage enforcement", "Publication-ready figure & artifact generation"], COLOR_S4),
+        ("STUDENT 5", "Aditya Yadav", "Integration, Ablations & Publications",
+         ["Centralized YAML experiment orchestrator", "Systematic ablation matrix execution", "Cross-phase benchmark comparison", "Final IEEE manuscript & presentation deck"], COLOR_S5),
+    ]
+
+    for idx, (badge, name, title, tasks, col) in enumerate(roles_data):
+        c_top = 1.45 + idx * 1.15
+        card = add_card(s3, 0.8, c_top, 11.7, 1.05, border_color=col)
+
+        # Student Badge & Name
+        tb_n = s3.shapes.add_textbox(Inches(1.0), Inches(c_top + 0.1), Inches(2.8), Inches(0.85))
+        tf = tb_n.text_frame
+        p = tf.paragraphs[0]
+        p.text = badge
+        p.font.name = FONT_HEAD
+        p.font.size = Pt(11)
+        p.font.bold = True
+        p.font.color.rgb = col
+
+        p2 = tf.add_paragraph()
+        p2.text = name
+        p2.font.name = FONT_HEAD
+        p2.font.size = Pt(14)
+        p2.font.bold = True
+        p2.font.color.rgb = TEXT_MAIN
+
+        p3 = tf.add_paragraph()
+        p3.text = title
+        p3.font.name = FONT_BODY
+        p3.font.size = Pt(10)
+        p3.font.color.rgb = TEXT_MUTED
+
+        # Deliverables Bullets
+        tb_d = s3.shapes.add_textbox(Inches(4.0), Inches(c_top + 0.12), Inches(8.3), Inches(0.85))
+        tf_d = tb_d.text_frame
+        tf_d.word_wrap = True
+        for i, tsk in enumerate(tasks):
+            p = tf_d.paragraphs[0] if i == 0 else tf_d.add_paragraph()
+            p.text = f"• {tsk}"
+            p.font.name = FONT_BODY
+            p.font.size = Pt(11)
+            p.font.color.rgb = TEXT_MAIN
+            p.space_after = Pt(1)
+
+    add_notes(s3, "Emphasize that the project followed a strict collaborative contract. Each student owned an independent module with clean integration boundaries and automated test validation.")
+
+    # =========================================================================
+    # SLIDE 4: STUDENT 1 — Chemical Preprocessing & Missingness
+    # =========================================================================
+    s4 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s4, BG_LIGHT)
+    add_header(s4, "Chemical Data Curation & Missing Label Handling", "STUDENT 1: DATA ENGINEERING", COLOR_S1)
+
+    # Left Column: Curation Logic
+    add_card(s4, 0.8, 1.45, 5.8, 5.5, "RDKit Sanitization & Label Masking", COLOR_S1)
+    tb = s4.shapes.add_textbox(Inches(1.0), Inches(2.05), Inches(5.4), Inches(4.7))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    s1_curation_points = [
+        "Raw Dataset Filtering: 7,831 raw compound records processed via RDKit. Exactly 8 invalid or unparseable structures were eliminated, yielding 7,823 validated chemical molecules.",
+        "Chemical Sanitization: Salt stripping, counter-ion removal, valence normalization, and canonical tautomer standardization.",
+        "Preserving Assay Missingness: Tox21 is an incomplete assay matrix where 23.6% of entries are unobserved (compounds not tested on certain pathways).",
+        "Masked Boolean Policy: Missing values are represented as NaN paired with an explicit boolean observation mask m in {0, 1}.",
+        "Strict Zero-Imputation Rejection: Imputing untested entries as inactive (0) introduces false negatives, skewing class boundaries and corrupting model calibration."
+    ]
+    for i, itm in enumerate(s1_curation_points):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(6)
+
+    # Right Column: Visual of Label Distribution
+    add_card(s4, 6.9, 1.45, 5.6, 5.5, "Tox21 Label Distribution & Missingness", COLOR_S1)
+    fig_path = FIG_DIR / "fig_label_statistics.png"
+    if fig_path.exists():
+        s4.shapes.add_picture(str(fig_path), Inches(7.1), Inches(2.1), width=Inches(5.2))
+
+    add_notes(s4, "Student 1's curation foundation: explain why RDKit sanitization is essential and why missing labels cannot be zero-imputed.")
+
+    # =========================================================================
+    # SLIDE 5: STUDENT 1 — Scaffold Partitioning
+    # =========================================================================
+    s5 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s5, BG_LIGHT)
+    add_header(s5, "Bemis–Murcko Scaffold Splitting & Zero Leakage Protocol", "STUDENT 1: DATA ENGINEERING", COLOR_S1)
+
+    # 3 Stat Cards for Split Counts
+    add_kpi_card(s5, 0.8, 1.45, 3.6, 1.4, "6,258", "Training Graphs (80%)", "Model Optimization", COLOR_S1)
+    add_kpi_card(s5, 4.8, 1.45, 3.6, 1.4, "782", "Validation Graphs (10%)", "Hyperparameter Tuning", COLOR_S2)
+    add_kpi_card(s5, 8.8, 1.45, 3.7, 1.4, "783", "Quarantined Test (10%)", "Untouched Final Benchmark", COLOR_S4)
+
+    add_card(s5, 0.8, 3.1, 11.7, 3.9, "Why Scaffold Splitting is Required in Cheminformatics", COLOR_S1)
+    tb = s5.shapes.add_textbox(Inches(1.1), Inches(3.7), Inches(11.1), Inches(3.1))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    scaffold_bullets = [
+        "The Scaffold Leakage Hazard: Under standard random splitting, molecules with identical core ring systems (scaffolds) appear in both train and test partitions. The model memorizes scaffold-activity pairs rather than true toxicophores.",
+        "Bemis–Murcko Core Extraction: All side chains are stripped, isolating molecular rings and linkers. Molecules are clustered by core framework.",
+        "Deterministic Cardinality Allocation: Scaffold clusters are sorted by descending size and partitioned strictly 80/10/10 into train, val, and test sets.",
+        "Scaffold Disjointness Guarantee: Zero scaffolds overlap between partitions (Train ∩ Test = ∅).",
+        "Out-of-Distribution Generalization: This protocol tests the model's ability to extrapolate toxicity to novel chemical families, mirroring genuine pharmaceutical discovery."
+    ]
+    for i, itm in enumerate(scaffold_bullets):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(13)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(8)
+
+    add_notes(s5, "Student 1: Emphasize that scaffold splitting is substantially harder than random splitting. MoleculeNet benchmarks Tox21 with random splits; our scaffold evaluation is much more rigorous.")
+
+    # =========================================================================
+    # SLIDE 6: STUDENT 1 — Molecular Graph Featurization
+    # =========================================================================
+    s6 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s6, BG_LIGHT)
+    add_header(s6, "Molecular Graph Construction: 19 Atom & 18 Bond Features", "STUDENT 1: DATA ENGINEERING", COLOR_S1)
+
+    add_card(s6, 0.8, 1.45, 5.7, 5.5, "19 Node Features (Atoms)", COLOR_S1)
+    tb_node = s6.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.6))
+    tf = tb_node.text_frame
+    tf.word_wrap = True
+    node_feats = [
+        "Atomic Identity (10 dims): One-hot encoding of C, N, O, S, F, P, Cl, Br, I, and other heteroatoms.",
+        "Degree / Connectivity (6 dims): One-hot encoding of heavy atom valence degree (0 to 5+).",
+        "Formal Charge (1 dim): Integer electrical charge of the atom.",
+        "Aromaticity Indicator (1 dim): Boolean flag for membership in an aromatic ring system.",
+        "Hydrogen Count (1 dim): Explicit number of bonded hydrogens.",
+        "Hybridization State: Encoded orbital geometry (sp, sp2, sp3)."
+    ]
+    for i, itm in enumerate(node_feats):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(13)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(8)
+
+    add_card(s6, 6.8, 1.45, 5.7, 5.5, "18 Edge Features (Bonds)", COLOR_S1)
+    tb_edge = s6.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.6))
+    tf = tb_edge.text_frame
+    tf.word_wrap = True
+    edge_feats = [
+        "Bond Order (4 dims): One-hot encoding of Single, Double, Triple, or Aromatic covalent bonds.",
+        "Conjugation Status (1 dim): Boolean flag indicating pi-orbital conjugation across adjacent bonds.",
+        "Ring System Membership (1 dim): Boolean flag indicating whether the bond is inside a ring.",
+        "Stereochemical Configuration (6 dims): Stereo isomerism (None, Any, Z/E, Cis/Trans).",
+        "Bidirectional Directed Graph: Every chemical bond is represented as two directed edges (u -> v and v -> u) to support message passing."
+    ]
+    for i, itm in enumerate(edge_feats):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(13)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(8)
+
+    add_notes(s6, "Student 1: Detail the 19 atom and 18 bond features. Note that bonds are bidirectional directed edges so information can flow freely in both directions.")
+
+    # =========================================================================
+    # SLIDE 7: STUDENT 2 — MolecularGNN Architecture
+    # =========================================================================
+    s7 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s7, BG_LIGHT)
+    add_header(s7, "MolecularGNN Architecture: Edge-Conditioned MPNN", "STUDENT 2: GNN ARCHITECTURE", COLOR_S2)
+
+    add_card(s7, 0.8, 1.45, 5.8, 5.5, "End-to-End Pipeline & Architecture Flow", COLOR_S2)
+    fig_p = FIG_DIR / "fig_pipeline.png"
+    if fig_p.exists():
+        s7.shapes.add_picture(str(fig_p), Inches(1.0), Inches(2.1), width=Inches(5.4))
+
+    add_card(s7, 6.9, 1.45, 5.6, 5.5, "Modular Architectural Components", COLOR_S2)
+    tb = s7.shapes.add_textbox(Inches(7.1), Inches(2.1), Inches(5.2), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    arch_points = [
+        "Input Feature Encoders: Linear projection mapping 19-dim atom features and 18-dim bond features into a unified latent space (hidden_dim = 128).",
+        "L=3 Message Passing Layers: 3 sequential rounds of edge-aware neighborhood propagation, covering a 3-bond topological radius.",
+        "Residual Connections: Skip connections h^(l) = LayerNorm(h^(l-1) + Update) preventing signal degradation in deeper layers.",
+        "Layer Normalization & Dropout: Stabilizes training across variable molecular sizes; 10% dropout prevents overfitting.",
+        "Global Readout Pooling: Aggregates atom representations into a single size-invariant molecular embedding.",
+        "Multi-Task Head: Direct linear projection to 12 unconstrained task logits."
+    ]
+    for i, itm in enumerate(arch_points):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(6)
+
+    add_notes(s7, "Student 2: Walk through the architectural diagram. Point out the atom/bond encoders, the 3 message passing layers, and the multi-task prediction head.")
+
+    # =========================================================================
+    # SLIDE 8: STUDENT 2 — Message Passing Mechanics
+    # =========================================================================
+    s8 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s8, BG_LIGHT)
+    add_header(s8, "Mathematical Formulation of Message Passing & Aggregation", "STUDENT 2: GNN ARCHITECTURE", COLOR_S2)
+
+    add_card(s8, 0.8, 1.45, 11.7, 5.5, "The Message Passing & State Update Equations", COLOR_S2)
+    tb = s8.shapes.add_textbox(Inches(1.1), Inches(2.1), Inches(11.1), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+
+    math_sections = [
+        "1. Linear Feature Encoders:",
+        "   h_i^(0) = ReLU(W_v · x_i + b_v)      [Atom embedding: 19 -> 128]",
+        "   h_ij^e  = ReLU(W_e · e_ij + b_e)     [Bond embedding: 18 -> 128]",
+        "",
+        "2. Edge-Conditioned Message Construction:",
+        "   m_ij^(l) = MLP_msg( [ h_j^(l-1) || h_ij^e ] )",
+        "   Each directed message concatenates the neighbor atom state with the bond connecting them.",
+        "",
+        "3. Permutation-Invariant Aggregation:",
+        "   m̄_i^(l) = Σ_{j ∈ N(i)} m_ij^(l)",
+        "   Incoming messages are summed across all bonded neighbors j in N(i).",
+        "",
+        "4. Node State Update with Residual LayerNorm:",
+        "   h_i^(l) = LayerNorm( h_i^(l-1) + Dropout( ReLU( W_u · [ h_i^(l-1) || m̄_i^(l) ] ) ) )",
+        "   Residual skip connection ensures atom identity is preserved while integrating neighbor context."
+    ]
+    for itm in math_sections:
+        p = tf.add_paragraph() if tf.paragraphs[0].text else tf.paragraphs[0]
+        p.text = itm
+        if itm.startswith(("1.", "2.", "3.", "4.")):
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(13)
+            p.font.bold = True
+            p.font.color.rgb = COLOR_S2
+            p.space_before = Pt(4)
+        elif "h_" in itm or "m_" in itm:
+            p.font.name = "Consolas"
+            p.font.size = Pt(12)
+            p.font.bold = True
+            p.font.color.rgb = TEXT_MAIN
+        else:
+            p.font.name = FONT_BODY
+            p.font.size = Pt(12)
+            p.font.color.rgb = TEXT_MUTED
+
+    add_notes(s8, "Student 2: Explain the math. Key points to highlight: edge features are included in messages; aggregation is sum; update has residual + LayerNorm.")
+
+    # =========================================================================
+    # SLIDE 9: STUDENT 2 — Readout Pooling & Prediction Head
+    # =========================================================================
+    s9 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s9, BG_LIGHT)
+    add_header(s9, "Graph Readout Pooling & 12-Task Prediction Head", "STUDENT 2: GNN ARCHITECTURE", COLOR_S2)
+
+    add_card(s9, 0.8, 1.45, 5.7, 5.5, "Graph-Level Readout Pooling", COLOR_S2)
+    tb = s9.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    pool_points = [
+        "Atom to Molecule Transition: Message passing yields hidden vectors for each individual atom. A readout function must aggregate them into one vector per molecule.",
+        "Mean Pooling Formulation:",
+        "   h_G = (1 / |V|) Σ_{i ∈ V} h_i^(L)",
+        "Why Mean Pooling Outperforms Sum Pooling:",
+        "   • Molecules in Tox21 range from 2 atoms to 50+ atoms.",
+        "   • Sum pooling creates vector norms that scale with molecule size, introducing severe size bias.",
+        "   • Mean pooling is size-invariant, focusing purely on chemical feature density.",
+        "Ablation Proof: Mean pooling achieved 0.2771 val loss vs 0.3047 for Sum pooling (confirmed in Phase 2 ablations)."
+    ]
+    for i, itm in enumerate(pool_points):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}" if not itm.startswith("   ") else itm
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(5)
+
+    add_card(s9, 6.8, 1.45, 5.7, 5.5, "12-Task Multi-Task Prediction Head", COLOR_S2)
+    tb = s9.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    head_points = [
+        "Multi-Task Linear Projection:",
+        "   ẑ = W_out · h_G + b_out",
+        "   Output Shape: [batch_size, 12] continuous logits.",
+        "Unconstrained Logits Output: The model outputs raw logits rather than sigmoid probabilities.",
+        "Why No Sigmoid in Model: Numerically stable training requires BCEWithLogitsLoss (log-sum-exp trick). Probabilities are obtained via σ(ẑ) strictly during evaluation.",
+        "Endpoint Order Preservation: The 12 outputs strictly match the canonical endpoint order established by Student 1 (NR-AR through SR-p53)."
+    ]
+    for i, itm in enumerate(head_points):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}" if not itm.startswith("   ") else itm
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(5)
+
+    add_notes(s9, "Student 2: Explain readout pooling and the prediction head. Be prepared to explain why mean pooling beats sum pooling (size variance).")
+
+    # =========================================================================
+    # SLIDE 10: STUDENT 3 — Masked Multi-Task Loss Engine
+    # =========================================================================
+    s10 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s10, BG_LIGHT)
+    add_header(s10, "Multi-Task Training: Mask-Aware Binary Cross-Entropy Loss", "STUDENT 3: TRAINING PIPELINE", COLOR_S3)
+
+    add_card(s10, 0.8, 1.45, 11.7, 5.5, "Masked Loss Formulation & Gradient Protection", COLOR_S3)
+    tb = s10.shapes.add_textbox(Inches(1.1), Inches(2.1), Inches(11.1), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+
+    loss_explanation = [
+        "The Incomplete Label Challenge: Across 12 endpoints, 23.6% of entries are unobserved (compounds were not tested on every assay).",
+        "",
+        "Masked BCEWithLogitsLoss Equation:",
+        "   L(Y, Ẑ, M) = Σ_{i=1}^B Σ_{k=1}^{12} m_ik · [ -y_ik · log σ(ẑ_ik) - (1 - y_ik) · log(1 - σ(ẑ_ik)) ] / Σ_{i,k} m_ik",
+        "",
+        "Key Engineering Properties:",
+        "• Strict Masking: For missing entries (m_ik = 0), the loss contribution is exactly zero. Zero gradient is backpropagated.",
+        "• Normalization by Observed Entries: Loss is divided by the count of actually observed labels, not batch_size × 12.",
+        "• Numerical Stability: Implemented via PyTorch BCEWithLogitsLoss with binary masking, avoiding numerical underflow in log-sigmoid.",
+        "• Class Imbalance Pos-Weight Support: Configurable positive multiplier w_k = N_neg / N_pos dynamically weighting rare toxic compounds."
+    ]
+    for itm in loss_explanation:
+        p = tf.add_paragraph() if tf.paragraphs[0].text else tf.paragraphs[0]
+        p.text = itm
+        if itm.startswith("   L"):
+            p.font.name = "Consolas"
+            p.font.size = Pt(13)
+            p.font.bold = True
+            p.font.color.rgb = COLOR_S3
+            p.space_after = Pt(6)
+        elif itm.startswith("•"):
+            p.font.name = FONT_BODY
+            p.font.size = Pt(13)
+            p.font.color.rgb = TEXT_MAIN
+            p.space_after = Pt(4)
+        else:
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(14)
+            p.font.bold = True
+            p.font.color.rgb = TEXT_MAIN
+
+    add_notes(s10, "Student 3: Explain the masked loss function. This is a favorite faculty question: How did you train on multi-task data when a quarter of the labels are missing?")
+
+    # =========================================================================
+    # SLIDE 11: STUDENT 3 — Optimization & Schedulers
+    # =========================================================================
+    s11 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s11, BG_LIGHT)
+    add_header(s11, "Optimization Strategy: AdamW, Schedulers & Early Stopping", "STUDENT 3: TRAINING PIPELINE", COLOR_S3)
+
+    add_kpi_card(s11, 0.8, 1.45, 2.7, 1.4, "AdamW", "Optimizer", "lr=1e-3, weight_decay=1e-4", COLOR_S3)
+    add_kpi_card(s11, 3.8, 1.45, 2.7, 1.4, "Plateau", "LR Scheduler", "factor=0.5, patience=4", COLOR_S3)
+    add_kpi_card(s11, 6.8, 1.45, 2.7, 1.4, "1.0", "Gradient Clipping", "Max Norm L2", COLOR_S3)
+    add_kpi_card(s11, 9.8, 1.45, 2.7, 1.4, "8", "Early Stopping", "Patience on Val Loss", COLOR_S3)
+
+    add_card(s11, 0.8, 3.1, 11.7, 3.9, "Training Dynamics & Convergence Safeguards", COLOR_S3)
+    tb = s11.shapes.add_textbox(Inches(1.1), Inches(3.7), Inches(11.1), Inches(3.1))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    train_points = [
+        "Adaptive Learning Rate Schedule: ReduceLROnPlateau halves learning rate (1e-3 -> 5e-4 -> 2.5e-4) whenever validation loss plateaus for 4 epochs.",
+        "Gradient Clipping: Gradients are clipped to a maximum L2-norm of 1.0 to prevent exploding gradients during message passing aggregation.",
+        "Early Stopping Mechanism: Halts training if validation loss fails to improve for 8 consecutive epochs, saving compute and preventing overfitting on the 6,258 training graphs.",
+        "Batch Size (32): Balances stochastic gradient noise with GPU/CPU memory throughput for variable-sized molecular graphs.",
+        "Deterministic Epoch Logging: Structured CSV and JSON logs record train loss, validation loss, and learning rate at every epoch."
+    ]
+    for i, itm in enumerate(train_points):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(13)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(6)
+
+    add_notes(s11, "Student 3: Explain optimization hyperparameters. Why AdamW? Why ReduceLROnPlateau? Why early stopping?")
+
+    # =========================================================================
+    # SLIDE 12: STUDENT 3 — Checkpointing & Reproducibility
+    # =========================================================================
+    s12 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s12, BG_LIGHT)
+    add_header(s12, "Checkpoint Integrity & Deterministic Reproducibility Controls", "STUDENT 3: TRAINING PIPELINE", COLOR_S3)
+
+    add_card(s12, 0.8, 1.45, 5.7, 5.5, "Atomic Checkpointing Protocol", COLOR_S3)
+    tb = s12.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    ckpt_bullets = [
+        "Best Model Checkpoint: Saved only when validation loss achieves a new minimum.",
+        "Atomic File Writing: Model state is written to a temporary file before renaming, preventing corrupted files if interrupted.",
+        "Metadata Bundling: Checkpoints bundle model state_dict, optimizer state, epoch index, validation loss, and full architecture hyperparameter dictionary.",
+        "SHA-256 Checksum Verification: Checkpoints calculate and verify cryptographic SHA-256 hashes to guarantee bit-for-bit weight preservation.",
+        "Isolated Last Checkpoint: 'last_gnn.pt' is saved alongside 'best_gnn.pt' for full training post-mortem analysis."
+    ]
+    for i, itm in enumerate(ckpt_bullets):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(8)
+
+    add_card(s12, 6.8, 1.45, 5.7, 5.5, "Multi-Seed Reproducibility Verification", COLOR_S3)
+    tb = s12.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    repro_bullets = [
+        "Global Seed Seeding: Seed 42 set across Python random, NumPy, PyTorch CPU, and PyTorch CUDA.",
+        "Deterministic Data Collation: PyTorch DataLoader workers initialized with deterministic seed generators.",
+        "Seed 42 vs Seed 43 Verification: Running an identical architecture with alternative seed 43 converged to val loss 0.2820 (vs 0.2771 for seed 42, Delta < 0.005).",
+        "Deterministic Inference: Repeated test inference on quarantined graphs produces identical probabilities with maximum absolute difference < 1e-6."
+    ]
+    for i, itm in enumerate(repro_bullets):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(8)
+
+    add_notes(s12, "Student 3: Emphasize scientific reproducibility. SHA-256 verified checkpoints and seed audits guarantee that anyone cloning the repo gets the exact same numbers.")
+
+    # =========================================================================
+    # SLIDE 13: STUDENT 4 — Quarantined Test Evaluation
+    # =========================================================================
+    s13 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s13, BG_LIGHT)
+    add_header(s13, "Independent Test Evaluation & Quarantined Protocol", "STUDENT 4: EVALUATION & VALIDATION", COLOR_S4)
+
+    add_kpi_card(s13, 0.8, 1.45, 3.6, 1.4, "783", "Quarantined Test Graphs", "Zero Scaffold Overlap", COLOR_S4)
+    add_kpi_card(s13, 4.8, 1.45, 3.6, 1.4, "7,175", "Valid Observed Labels", "76.4% Assay Observation Density", COLOR_S4)
+    add_kpi_card(s13, 8.8, 1.45, 3.7, 1.4, "0.0", "Data Leakage", "Test Set Never Seen in Training", COLOR_S4)
+
+    add_card(s13, 0.8, 3.1, 11.7, 3.9, "Student 4 Independent Evaluation Principles", COLOR_S4)
+    tb = s13.shapes.add_textbox(Inches(1.1), Inches(3.7), Inches(11.1), Inches(3.1))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    eval_principles = [
+        "Strict Quarantine Enforcement: Test molecules were never used for backpropagation, learning rate decisions, or early stopping.",
+        "Model Invariance: Evaluated strictly in model.eval() with torch.no_grad() — frozen weights, no fine-tuning or threshold calibration.",
+        "Mask-Aware Metric Computation: Metrics computed strictly over the 7,175 observed assay labels; unobserved assays excluded.",
+        "Rank-Based Threshold-Free Metrics: Primary metrics are ROC-AUC (Mann-Whitney U rank statistic) and PR-AUC (Average Precision via trapezoidal integration).",
+        "Macro Aggregation with Uncertainty: Computes macro sample mean across all 12 endpoints alongside sample Standard Error (SEM) and 95% Student-t confidence intervals."
+    ]
+    for i, itm in enumerate(eval_principles):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(13)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(8)
+
+    add_notes(s13, "Student 4: Emphasize the separation of concerns. Student 4 operated as an independent auditor evaluating Student 3's checkpoint on the untouched test partition.")
+
+    # =========================================================================
+    # SLIDE 14: STUDENT 4 — Final Test ROC-AUC
+    # =========================================================================
+    s14 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s14, BG_LIGHT)
+    add_header(s14, "Test Set Performance: ROC-AUC Across All 12 Endpoints", "STUDENT 4: EVALUATION & VALIDATION", COLOR_S4)
+
+    add_card(s14, 0.8, 1.45, 6.2, 5.5, "Endpoint-Wise ROC-AUC vs Macro Mean", COLOR_S4)
+    fig_roc = FIG_DIR / "endpoint_roc_auc.png"
+    if fig_roc.exists():
+        s14.shapes.add_picture(str(fig_roc), Inches(1.0), Inches(2.1), width=Inches(5.8))
+
+    add_card(s14, 7.3, 1.45, 5.2, 5.5, "ROC-AUC Results & Analysis", COLOR_S4)
+    tb = s14.shapes.add_textbox(Inches(7.5), Inches(2.1), Inches(4.8), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    roc_analysis = [
+        "Macro Mean ROC-AUC: 0.7395 ± 0.0182 (SEM)",
+        "95% Confidence Interval: [0.6995, 0.7795]",
+        "All 12 Endpoints Valid: 0 excluded, 100% accounted for.",
+        "",
+        "Top Performing Assays:",
+        "• SR-MMP (0.849): Mitochondrial membrane potential disruption — strong structural signals.",
+        "• NR-AhR (0.832): Aryl hydrocarbon receptor — planar aromatic rings well captured by GNN.",
+        "• NR-Aromatase (0.803): Steroid synthesis inhibition.",
+        "",
+        "Challenging Assays:",
+        "• NR-AR (0.590): Androgen receptor — lowest positive prevalence (1.5%), severe class scarcity."
+    ]
+    for itm in roc_analysis:
+        p = tf.add_paragraph() if tf.paragraphs[0].text else tf.paragraphs[0]
+        p.text = itm
+        if itm.startswith("Macro Mean"):
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(14)
+            p.font.bold = True
+            p.font.color.rgb = COLOR_S4
+            p.space_after = Pt(4)
+        elif itm.startswith(("Top Performing", "Challenging")):
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(12)
+            p.font.bold = True
+            p.font.color.rgb = TEXT_MAIN
+            p.space_before = Pt(6)
+        else:
+            p.font.name = FONT_BODY
+            p.font.size = Pt(11)
+            p.font.color.rgb = TEXT_MAIN
+
+    add_notes(s14, "Student 4: Walk through the ROC-AUC bar chart. Explain why SR-MMP and NR-AhR perform best (strong topological motifs) and why NR-AR is challenging (1.5% prevalence).")
+
+    # =========================================================================
+    # SLIDE 15: STUDENT 4 — Final Test PR-AUC & Prevalence
+    # =========================================================================
+    s15 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s15, BG_LIGHT)
+    add_header(s15, "Test Set Performance: Precision-Recall vs. Baseline Prevalence", "STUDENT 4: EVALUATION & VALIDATION", COLOR_S4)
+
+    add_card(s15, 0.8, 1.45, 6.2, 5.5, "Endpoint PR-AUC vs Random Baseline Prevalence", COLOR_S4)
+    fig_pr = FIG_DIR / "endpoint_pr_auc.png"
+    if fig_pr.exists():
+        s15.shapes.add_picture(str(fig_pr), Inches(1.0), Inches(2.1), width=Inches(5.8))
+
+    add_card(s15, 7.3, 1.45, 5.2, 5.5, "PR-AUC Diagnostics & Class Imbalance", COLOR_S4)
+    tb = s15.shapes.add_textbox(Inches(7.5), Inches(2.1), Inches(4.8), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    pr_analysis = [
+        "Macro Mean PR-AUC: 0.3118 ± 0.0331 (SEM)",
+        "95% Confidence Interval: [0.2389, 0.3847]",
+        "",
+        "PR-AUC vs Random Baseline:",
+        "• A dummy random classifier achieves PR-AUC equal to positive class prevalence (1.5% - 15.2%).",
+        "• MolecularGNN significantly exceeds random baseline on every single endpoint.",
+        "• For SR-MMP, PR-AUC reaches 0.589 vs baseline prevalence of 0.152 (3.9x improvement).",
+        "",
+        "Prevalence Correlation:",
+        "• Strong positive correlation between endpoint prevalence and PR-AUC.",
+        "• Confirms that data scarcity on rare toxic endpoints is the primary bottleneck for precision."
+    ]
+    for itm in pr_analysis:
+        p = tf.add_paragraph() if tf.paragraphs[0].text else tf.paragraphs[0]
+        p.text = itm
+        if itm.startswith("Macro Mean"):
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(14)
+            p.font.bold = True
+            p.font.color.rgb = COLOR_S4
+            p.space_after = Pt(4)
+        elif itm.startswith(("PR-AUC vs", "Prevalence")):
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(12)
+            p.font.bold = True
+            p.font.color.rgb = TEXT_MAIN
+            p.space_before = Pt(6)
+        else:
+            p.font.name = FONT_BODY
+            p.font.size = Pt(11)
+            p.font.color.rgb = TEXT_MAIN
+
+    add_notes(s15, "Student 4: Explain the red diamonds on the PR-AUC chart: they represent the random baseline (positive prevalence). The green bars are GNN performance.")
+
+    # =========================================================================
+    # SLIDE 16: STUDENT 4 — Prediction Distributions & Confusion
+    # =========================================================================
+    s16 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s16, BG_LIGHT)
+    add_header(s16, "Continuous Prediction Distributions & Error Diagnostics", "STUDENT 4: EVALUATION & VALIDATION", COLOR_S4)
+
+    add_card(s16, 0.8, 1.45, 6.2, 5.5, "Prediction Probability Distributions", COLOR_S4)
+    fig_dist = FIG_DIR / "prediction_probability_distributions.png"
+    if fig_dist.exists():
+        s16.shapes.add_picture(str(fig_dist), Inches(1.0), Inches(2.1), width=Inches(5.8))
+
+    add_card(s16, 7.3, 1.45, 5.2, 5.5, "Distribution Insights & Threshold Collapse", COLOR_S4)
+    tb = s16.shapes.add_textbox(Inches(7.5), Inches(2.1), Inches(4.8), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    dist_analysis = [
+        "Continuous Probability Separation:",
+        "• Blue histograms = True Negatives (cluster sharply near 0.0).",
+        "• Red histograms = True Positives (shifted toward higher probabilities).",
+        "",
+        "The Threshold Collapse Phenomenon:",
+        "• Fixed threshold t=0.5 achieves Mean Balanced Accuracy 0.5599 and F1 0.1777.",
+        "• Why? Because positive prevalence is ~5%, calibrated model probabilities for positives naturally peak around 0.2 - 0.4.",
+        "• An arbitrary threshold of 0.5 cuts off valid positives, demonstrating why rank-based metrics (ROC-AUC) are the gold standard."
+    ]
+    for itm in dist_analysis:
+        p = tf.add_paragraph() if tf.paragraphs[0].text else tf.paragraphs[0]
+        p.text = itm
+        if itm.startswith("Continuous") or itm.startswith("The Threshold"):
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(13)
+            p.font.bold = True
+            p.font.color.rgb = COLOR_S4
+            p.space_before = Pt(6)
+        else:
+            p.font.name = FONT_BODY
+            p.font.size = Pt(11)
+            p.font.color.rgb = TEXT_MAIN
+            p.space_after = Pt(2)
+
+    add_notes(s16, "Student 4: Use the probability distribution plot to demonstrate model calibration and explain why standard 0.5 threshold fails under imbalanced data.")
+
+    # =========================================================================
+    # SLIDE 17: STUDENT 5 — Centralized Experiment Orchestrator
+    # =========================================================================
+    s17 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s17, BG_LIGHT)
+    add_header(s17, "Centralized Experiment Orchestration & Configuration Engine", "STUDENT 5: INTEGRATION & BENCHMARKS", COLOR_S5)
+
+    add_card(s17, 0.8, 1.45, 5.7, 5.5, "Orchestration Architecture", COLOR_S5)
+    tb = s17.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(5.3), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    orch_bullets = [
+        "src/experiments/run_experiment.py: Unified CLI and programmatic runner executing end-to-end experiment pipelines.",
+        "src/experiments/experiment_config.py: Dataclass schema loading declarative YAML configs with full type validation.",
+        "src/experiments/experiment_registry.py: Automated tracking registry recording git commit hashes, runtimes, device info, and metrics.",
+        "configs/phase2/: 8 declarative YAML configs managing baseline and ablation settings.",
+        "Integration Contract Verification: Directly interfaces Student 1 (data), Student 2 (model), Student 3 (training), and Student 4 (evaluation)."
+    ]
+    for i, itm in enumerate(orch_bullets):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = f"• {itm}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_MAIN
+        p.space_after = Pt(8)
+
+    add_card(s17, 6.8, 1.45, 5.7, 5.5, "Example YAML Experiment Schema", COLOR_S5)
+    tb_yaml = s17.shapes.add_textbox(Inches(7.0), Inches(2.1), Inches(5.3), Inches(4.6))
+    tf_y = tb_yaml.text_frame
+    tf_y.word_wrap = True
+    yaml_sample = [
+        "experiment_id: gnn_baseline",
+        "description: Default Phase 2 MolecularGNN",
+        "",
+        "# Architecture Parameters",
+        "hidden_dim: 128",
+        "num_layers: 3",
+        "pooling: mean",
+        "dropout: 0.1",
+        "residual: true",
+        "norm: layer",
+        "",
+        "# Optimization Parameters",
+        "epochs: 10",
+        "batch_size: 32",
+        "learning_rate: 0.001",
+        "weight_decay: 0.0001",
+        "early_stopping_patience: 8",
+        "",
+        "# Reproducibility & Environment",
+        "seed: 42",
+        "device: auto"
+    ]
+    for itm in yaml_sample:
+        p = tf_y.add_paragraph() if tf_y.paragraphs[0].text else tf_y.paragraphs[0]
+        p.text = itm
+        p.font.name = "Consolas"
+        p.font.size = Pt(11)
+        p.font.color.rgb = COLOR_S5 if itm.startswith(("#", "experiment_id")) else TEXT_MAIN
+
+    add_notes(s17, "Student 5: Present the experiment orchestration infrastructure. Explain that this enables any team member or researcher to reproduce runs with a single command.")
+
+    # =========================================================================
+    # SLIDE 18: STUDENT 5 — Systematic Ablation Study
+    # =========================================================================
+    s18 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s18, BG_LIGHT)
+    add_header(s18, "Systematic Architectural & Optimization Ablation Matrix", "STUDENT 5: INTEGRATION & BENCHMARKS", COLOR_S5)
+
+    add_card(s18, 0.8, 1.45, 6.2, 5.5, "Validation Loss Comparison Across Ablations", COLOR_S5)
+    fig_abl = FIG_DIR / "ablation_validation_loss_comparison.png"
+    if fig_abl.exists():
+        s18.shapes.add_picture(str(fig_abl), Inches(1.0), Inches(2.1), width=Inches(5.8))
+
+    add_card(s18, 7.3, 1.45, 5.2, 5.5, "Ablation Matrix Results & Findings", COLOR_S5)
+    tb = s18.shapes.add_textbox(Inches(7.5), Inches(2.1), Inches(4.8), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    ablation_summary = [
+        "1. Readout Pooling (Mean vs Sum):",
+        "   • Mean: 0.2771 vs Sum: 0.3047",
+        "   • Sum pooling introduces massive variance from variable molecular sizes.",
+        "",
+        "2. Message Passing Depth (L=3 vs L=2):",
+        "   • L=3: 0.2771 vs L=2: 0.2783",
+        "   • 3-hop receptive field captures entire aromatic ring systems and functional pharmacophores.",
+        "",
+        "3. Hidden Channels (d=128 vs d=64):",
+        "   • d=128: 0.2771 vs d=64: 0.2809",
+        "   • 128 channels provide needed capacity for 12 parallel multi-task endpoints.",
+        "",
+        "4. Seed Stability (Seed 42 vs Seed 43):",
+        "   • Seed 42: 0.2771 vs Seed 43: 0.2820 (Delta < 0.005 confirms stable optimization)."
+    ]
+    for itm in ablation_summary:
+        p = tf.add_paragraph() if tf.paragraphs[0].text else tf.paragraphs[0]
+        p.text = itm
+        if itm.startswith(("1.", "2.", "3.", "4.")):
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(12)
+            p.font.bold = True
+            p.font.color.rgb = COLOR_S5
+            p.space_before = Pt(4)
+        else:
+            p.font.name = FONT_BODY
+            p.font.size = Pt(11)
+            p.font.color.rgb = TEXT_MAIN
+
+    add_notes(s18, "Student 5: Walk through the ablation results. Highlight that architecture choices were empirically validated, not guessed.")
+
+    # =========================================================================
+    # SLIDE 19: STUDENT 5 — Cross-Paradigm Benchmark
+    # =========================================================================
+    s19 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s19, BG_LIGHT)
+    add_header(s19, "Cross-Paradigm Benchmark: Classical ML vs. Graph Neural Networks", "STUDENT 5: INTEGRATION & BENCHMARKS", COLOR_S5)
+
+    add_card(s19, 0.8, 1.45, 5.8, 5.5, "Phase 1 Classical Benchmark Overview", COLOR_S5)
+    fig_mc = FIG_DIR / "fig_model_comparison.png"
+    if fig_mc.exists():
+        s19.shapes.add_picture(str(fig_mc), Inches(1.0), Inches(2.1), width=Inches(5.4))
+
+    add_card(s19, 6.9, 1.45, 5.6, 5.5, "Head-to-Head Quarantined Test Benchmark", COLOR_S5)
+    tb = s19.shapes.add_textbox(Inches(7.1), Inches(2.1), Inches(5.2), Inches(4.6))
+    tf = tb.text_frame
+    tf.word_wrap = True
+
+    p = tf.paragraphs[0]
+    p.text = "Benchmark Comparison (N=783 Test Graphs):"
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(13)
+    p.font.bold = True
+    p.font.color.rgb = TEXT_MAIN
+
+    bench_rows = [
+        "• LR (Morgan): ROC 0.6865 ± 0.0210 | PR 0.2866",
+        "• XGBoost (Comb): ROC 0.7456 ± 0.0175 | PR 0.3789",
+        "• RF Champion (Comb): ROC 0.7488 ± 0.0185 | PR 0.3891",
+        "• MolecularGNN: ROC 0.7395 ± 0.0182 | PR 0.3118",
+        "",
+        "Statistical Parity Conclusion:",
+        "1. Overlapping Confidence Intervals:",
+        "   RF CI [0.7125, 0.7851] vs GNN CI [0.6995, 0.7795].",
+        "   Delta = 0.0093 is well within standard error.",
+        "",
+        "2. Representation Learning Win:",
+        "   GNN matches the heavily engineered RF champion (2,057 dims) from raw atom/bond features alone.",
+        "",
+        "3. PR-AUC Dynamic:",
+        "   RF retains higher PR-AUC due to axis-aligned splits on rare positive fingerprint bits."
+    ]
+    for itm in bench_rows:
+        p = tf.add_paragraph()
+        p.text = itm
+        if itm.startswith("Statistical Parity") or itm.startswith("• RF") or itm.startswith("• MolecularGNN"):
+            p.font.name = FONT_HEAD
+            p.font.size = Pt(11)
+            p.font.bold = True
+            p.font.color.rgb = COLOR_S5 if "MolecularGNN" in itm else TEXT_MAIN
+        else:
+            p.font.name = FONT_BODY
+            p.font.size = Pt(11)
+            p.font.color.rgb = TEXT_MUTED if itm.startswith("   ") else TEXT_MAIN
+
+    add_notes(s19, "Student 5: Deliver the headline finding of the entire B.Tech thesis: GNN achieves statistical parity with the Random Forest baseline without requiring 2,057 engineered features.")
+
+    # =========================================================================
+    # SLIDE 20: Conclusion & Viva Defense Summary
+    # =========================================================================
+    s20 = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(s20, BG_DARK)
+
+    # Accent decorative top bar
+    bar20 = s20.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(13.333), Inches(0.12))
+    bar20.fill.solid()
+    bar20.fill.fore_color.rgb = COLOR_S2
+    bar20.line.fill.background()
+
+    tb = s20.shapes.add_textbox(Inches(1.0), Inches(0.8), Inches(11.3), Inches(1.0))
+    p = tb.text_frame.paragraphs[0]
+    p.text = "Conclusion & Summary of Scientific Contributions"
+    p.font.name = FONT_HEAD
     p.font.size = Pt(28)
     p.font.bold = True
     p.font.color.rgb = WHITE
-    p.alignment = PP_ALIGN.LEFT
-    tf.margin_left = Inches(0.6)
-    tf.margin_top = Inches(0.15)
 
-    if subtitle:
-        tb = _tb(slide, 0.6, 0.75, 10, 0.4)
-        _set_para(tb.text_frame.paragraphs[0], subtitle, size=14, color=RGBColor(0xA0, 0xB0, 0xC0))
-
-
-def _bullet_list(slide, left, top, width, height, items, size=16, bold_first=False):
-    tb = _tb(slide, left, top, width, height)
+    # 3 Summary Cards
+    c1 = s20.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.0), Inches(1.9), Inches(3.6), Inches(4.8))
+    c1.fill.solid()
+    c1.fill.fore_color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+    c1.line.color.rgb = COLOR_S1
+    c1.line.width = Pt(1.5)
+    tb = s20.shapes.add_textbox(Inches(1.2), Inches(2.1), Inches(3.2), Inches(4.4))
     tf = tb.text_frame
     tf.word_wrap = True
-    for i, item in enumerate(items):
-        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.text = item
-        p.font.name = BODY_FONT
-        p.font.size = Pt(size)
-        p.font.color.rgb = TEXT
-        p.space_after = Pt(6)
-        p.level = 0
-        if bold_first and i == 0:
-            p.font.bold = True
-
-
-def _notes(slide, text):
-    notes_slide = slide.notes_slide
-    notes_slide.notes_text_frame.text = text
-
-
-# ── Slide 1: Title ──────────────────────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl, INK)
-
-tb = _tb(sl, 1.0, 1.5, 11.3, 1.5)
-_set_para(tb.text_frame.paragraphs[0],
-          "Molecular Toxicity Prediction via Chemical\nFingerprints and Molecular Graph Networks",
-          font_name=HEAD_FONT, size=36, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
-
-tb = _tb(sl, 1.0, 3.3, 11.3, 0.6)
-_set_para(tb.text_frame.paragraphs[0],
-          "B.Tech Research Project — Phase 1 & Phase 2 Final Presentation",
-          size=20, color=RGBColor(0xA0, 0xC0, 0xE0), align=PP_ALIGN.CENTER)
-
-team = [
-    "Amogha Raj Sindur  •  Bulbul Agarwalla  •  Shourya Pratap  •  Kanishka Dubey  •  Aditya Yadav",
-    "Department of Computer Science & AI — Newton School of Technology",
-]
-tb = _tb(sl, 1.0, 4.3, 11.3, 1.2)
-tf = tb.text_frame
-tf.word_wrap = True
-for i, t in enumerate(team):
-    p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-    p.text = t
-    p.font.name = BODY_FONT
-    p.font.size = Pt(16) if i == 0 else Pt(14)
-    p.font.color.rgb = RGBColor(0xCC, 0xDD, 0xEE) if i == 0 else MUTED
-    p.alignment = PP_ALIGN.CENTER
-
-_notes(sl, "Welcome and introduce team members. Mention the two-phase structure of the project.")
-
-
-# ── Slide 2: Problem & Motivation ───────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Problem Statement & Motivation")
-
-items = [
-    "▸ Animal-based toxicity testing is slow (~2 years), expensive (~$2M/compound), and raises ethical concerns",
-    "▸ U.S. NRC (2007) proposed shifting to high-throughput in vitro screening of toxicity pathways",
-    "▸ Tox21 programme: screened ~10,000 chemicals across 12 nuclear-receptor & stress-response assays",
-    "▸ Challenge: Can computational models predict toxicity from molecular structure alone?",
-    "",
-    "Key ML Challenges in Tox21:",
-    "  • Extreme class imbalance — only 1.5–15% of compounds are active/toxic per endpoint",
-    "  • Sparse label matrix — 23.6% of assay labels are missing (untested compounds)",
-    "  • Structural clustering — analogues inflate accuracy under random splits",
-    "  • Solution: Bemis–Murcko scaffold split guarantees out-of-distribution generalization",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.5, items)
-
-_notes(sl, "Explain why in-silico toxicity prediction matters. Emphasize the three ML challenges: imbalance, missingness, and scaffold clustering.")
-
-
-# ── Slide 3: Dataset Curation & Endpoints ────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Tox21 Dataset: Curation & Canonical Endpoints")
-
-items = [
-    "Dataset: 7,831 raw → 7,823 cleaned molecules after RDKit sanitization (8 removed)",
-    "",
-    "12 Toxicity Endpoints (7 Nuclear Receptor + 5 Stress Response):",
-    "  NR: AR, AR-LBD, AhR, Aromatase, ER, ER-LBD, PPAR-gamma",
-    "  SR: ARE, ATAD5, HSE, MMP, p53",
-    "",
-    "Label Handling:",
-    "  • Missing labels preserved as NaN with boolean mask — never zero-imputed",
-    "  • Observed assay density: 76.4% (valid labels / total possible)",
-    "  • Positive prevalence range: 1.5% (NR-AR) to 15.2% (SR-MMP)",
-    "",
-    "Canonical Bemis–Murcko Scaffold Split:",
-    "  • Train: 6,258 (80%) | Validation: 782 (10%) | Test: 783 (10%)",
-    "  • Zero scaffold overlap between any two partitions",
-    "  • Test set quarantined — never seen during training or tuning",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=15)
-
-_notes(sl, "Walk through the curation pipeline. Stress that missing labels are masked, not imputed. Explain scaffold splitting vs random splitting.")
-
-
-# ── Slide 4: Two-Phase Pipeline ──────────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "End-to-End Two-Phase Experimental Pipeline")
-
-items = [
-    "Phase 1 — Classical ML Baseline:",
-    "  SMILES → RDKit Sanitization → Morgan FP (2048-bit) + 9 Descriptors →",
-    "  Scaffold Split → LR / RF / XGBoost → Masked BCE → ROC-AUC & PR-AUC",
-    "",
-    "Phase 2 — Graph Neural Network:",
-    "  SMILES → RDKit → Atom Graph (19 node feat + 18 edge feat) →",
-    "  Scaffold Split → MolecularGNN (Edge-MPNN) → Masked BCE → ROC-AUC & PR-AUC",
-    "",
-    "Shared Infrastructure:",
-    "  • Identical canonical scaffold split across both phases",
-    "  • Same 783 quarantined test molecules for final evaluation",
-    "  • Same 12 endpoint ordering and mask-aware metric computation",
-    "  • Reproducible seeds (42), deterministic data loading",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.5, items, size=15)
-
-_notes(sl, "Emphasize that both phases share the same scaffold split, test set, and evaluation protocol for fair comparison.")
-
-
-# ── Slide 5: Phase 1 Feature Engineering ─────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 1: Feature Engineering — Morgan Fingerprints & Descriptors")
-
-items = [
-    "1. Morgan Circular Fingerprints (ECFP4):",
-    "   • 2,048-bit binary vectors, radius=2",
-    "   • Each bit encodes presence/absence of a circular molecular substructure",
-    "   • Captures local chemical environment within 2-bond neighborhood of each atom",
-    "",
-    "2. Physicochemical Descriptors (9 features):",
-    "   • MolWt, LogP, TPSA, HBD, HBA, NumRotatableBonds, RingCount, HeavyAtomCount, FractionCSP3",
-    "   • StandardScaler fitted on training data only (no test leakage)",
-    "",
-    "3. Combined Representation (2,057 dimensions):",
-    "   • Concatenation of Morgan FP + scaled descriptors",
-    "   • Combines structural topology with global physicochemical context",
-    "   • Improved ROC-AUC on 11/12 endpoints vs fingerprints alone",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.5, items, size=15)
-
-_notes(sl, "Explain Morgan fingerprints with the circular substructure concept. Note that combining FP + descriptors consistently helped.")
-
-
-# ── Slide 6: Phase 1 Models ─────────────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 1: Classical ML Models & Evaluation Protocol")
-
-items = [
-    "Three Model Architectures (× 3 representations = 9 configurations):",
-    "",
-    "  1. L2-Regularized Logistic Regression — linear baseline",
-    "  2. Random Forest (500 trees, balanced subsampling) — ensemble of decision trees",
-    "  3. XGBoost (max_depth=6, lr=0.05) — gradient-boosted decision trees",
-    "",
-    "Multi-Task Training:",
-    "  • Independent binary classifier per endpoint",
-    "  • Missing labels excluded via boolean masking (not zero-filled)",
-    "",
-    "Evaluation Metrics (threshold-free, rank-based):",
-    "  • ROC-AUC: Probability that a random positive ranks above a random negative",
-    "  • PR-AUC (Average Precision): Area under precision-recall curve",
-    "  • Both metrics robust to class imbalance vs simple accuracy",
-    "  • Macro-averaged across 12 endpoints ± SEM",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.5, items, size=15)
-
-_notes(sl, "Stress why we use ROC-AUC and PR-AUC instead of accuracy. Accuracy is misleading when 97% of labels are negative.")
-
-
-# ── Slide 7: Phase 1 Results ────────────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 1: Benchmark Results — All 9 Configurations")
-
-# Build a simple table-like text
-header = "Model                        Representation      Macro ROC-AUC      Macro PR-AUC"
-rows = [
-    "Logistic Regression          Morgan FP           0.6865 ± 0.0210    0.2866 ± 0.0384",
-    "Logistic Regression          Descriptors         0.5769 ± 0.0255    0.1721 ± 0.0196",
-    "Logistic Regression          Combined            0.6823 ± 0.0215    0.2740 ± 0.0343",
-    "Random Forest                Morgan FP           0.7312 ± 0.0202    0.3617 ± 0.0442",
-    "Random Forest                Descriptors         0.6265 ± 0.0215    0.2130 ± 0.0271",
-    "★ Random Forest              Combined            0.7488 ± 0.0185    0.3891 ± 0.0442",
-    "XGBoost                      Morgan FP           0.7261 ± 0.0177    0.3400 ± 0.0381",
-    "XGBoost                      Descriptors         0.6291 ± 0.0225    0.2250 ± 0.0313",
-    "XGBoost                      Combined            0.7456 ± 0.0175    0.3789 ± 0.0421",
-]
-
-tb = _tb(sl, 0.6, 1.5, 12, 0.5)
-_set_para(tb.text_frame.paragraphs[0], header, font_name="Consolas", size=13, bold=True, color=INK)
-
-tb = _tb(sl, 0.6, 2.0, 12, 5.0)
-tf = tb.text_frame
-tf.word_wrap = True
-for i, row in enumerate(rows):
-    p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-    p.text = row
-    p.font.name = "Consolas"
-    p.font.size = Pt(12)
-    p.font.color.rgb = TEXT
-    if "★" in row:
-        p.font.bold = True
-        p.font.color.rgb = BLUE
-    p.space_after = Pt(4)
-
-tb = _tb(sl, 0.6, 6.3, 12, 0.5)
-_set_para(tb.text_frame.paragraphs[0],
-          "Champion: Random Forest + Combined Features — Macro ROC-AUC 0.7488 ± 0.0185",
-          size=16, bold=True, color=BLUE, align=PP_ALIGN.CENTER)
-
-_notes(sl, "Walk through the 9 configurations. Highlight that combined features consistently improve both tree ensembles.")
-
-
-# ── Slide 8: Phase 2 Molecular Graph Representation ─────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 2: From Fingerprints to Molecular Graphs")
-
-items = [
-    "Key Idea: Instead of fixed-length fingerprints, represent each molecule as a graph",
-    "",
-    "Molecular Graph G = (V, E):",
-    "  • Nodes (V) = Atoms → 19-dimensional feature vectors",
-    "     – Atomic number (one-hot: C, N, O, S, F, P, Cl, Br, I, other)",
-    "     – Degree (0–5), formal charge, aromaticity, hydrogens, hybridization",
-    "  • Edges (E) = Bonds → 18-dimensional feature vectors",
-    "     – Bond type (single, double, triple, aromatic), conjugation, ring membership, stereo",
-    "",
-    "Advantages over fingerprints:",
-    "  • No information loss from hashing collisions",
-    "  • Preserves molecular topology and connectivity",
-    "  • Learnable, task-specific representations (no manual engineering)",
-    "",
-    "Graph Preprocessing: 7,823 molecules → 6,258 train + 782 val + 783 test graphs",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=14)
-
-_notes(sl, "Explain the transition from fingerprints to graphs. Emphasize that the same molecules and splits are used.")
-
-
-# ── Slide 9: GNN Architecture ───────────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 2: MolecularGNN — Edge-Aware Message Passing Architecture")
-
-items = [
-    "Architecture Components:",
-    "",
-    "1. Feature Encoders — Linear projection of raw atom/bond features to hidden dim (d=128)",
-    "     h_i⁰ = ReLU(W_v · x_i + b_v),   h_ij^e = ReLU(W_e · e_ij + b_e)",
-    "",
-    "2. Edge-Conditioned Message Passing (L=3 layers) —",
-    "     Message: m_ij = MLP([h_j || h_ij^e])     (concatenate atom + bond features)",
-    "     Aggregate: m̄_i = Σ_j∈N(i) m_ij             (sum over neighbors)",
-    "     Update: h_i^l = LayerNorm(h_i^(l-1) + Dropout(ReLU(W_u · [h_i^(l-1) || m̄_i])))",
-    "",
-    "3. Graph-Level Mean Pooling — h_G = (1/|V|) Σ h_i^L",
-    "     Size-invariant: molecules with 2 atoms pooled same way as 50-atom molecules",
-    "",
-    "4. Multi-Task Head — 12 independent logits: ẑ = W_out · h_G + b_out",
-    "     Output: [batch_size, 12] raw logits (no sigmoid — handled by BCEWithLogitsLoss)",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=13)
-
-_notes(sl, "Walk through the four architectural components. Stress residual connections, layer norm, and why mean pooling is preferred.")
-
-
-# ── Slide 10: Message Passing Mechanism ──────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 2: How Message Passing Works on Molecules")
-
-items = [
-    "Intuition: Each atom 'talks to' its neighbors through bonds",
-    "",
-    "Layer 1: Each atom sees its immediate bonded neighbors (1-hop)",
-    "  → Carbon learns it's bonded to an OH group",
-    "",
-    "Layer 2: Information propagates 2 bonds away (2-hop)",
-    "  → The carbon now 'knows' about the whole functional group",
-    "",
-    "Layer 3: Information covers 3-bond radius (3-hop)",
-    "  → Captures pharmacophore-scale patterns, ring systems, conjugation",
-    "",
-    "Key Design Decisions:",
-    "  • Edge features (bond type) are incorporated into messages — critical for chemistry",
-    "  • Residual connections prevent information loss in deeper layers",
-    "  • Layer normalization stabilizes training across variable molecular sizes",
-    "  • Dropout (10%) prevents overfitting on small training set (6,258 graphs)",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=14)
-
-_notes(sl, "Use an analogy: message passing is like a game of telephone along chemical bonds. After 3 rounds, every atom knows its 3-hop neighborhood.")
-
-
-# ── Slide 11: Training Pipeline ──────────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 2: Training Pipeline — Masked Loss & Optimization")
-
-items = [
-    "Mask-Aware Binary Cross-Entropy Loss:",
-    "  • For each molecule and endpoint: only compute loss where label exists (mask=1)",
-    "  • Missing labels (mask=0) contribute zero gradient — no false negative bias",
-    "  • Loss = Σ(mask_k × BCE(y_k, σ(ẑ_k))) / Σ(mask_k)",
-    "",
-    "Optimization Configuration:",
-    "  • Optimizer: Adam (lr=0.001, weight_decay=0.0001)",
-    "  • Scheduler: ReduceLROnPlateau (factor=0.5, patience=4)",
-    "  • Gradient clipping: max_norm=1.0",
-    "  • Early stopping: patience=8 epochs on validation loss",
-    "  • Batch size: 32 molecular graphs per mini-batch",
-    "",
-    "Reproducibility Controls:",
-    "  • Fixed seed (42) for PyTorch, NumPy, Python random",
-    "  • Deterministic collation and batching",
-    "  • SHA-256 verified checkpoint saving and loading",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=14)
-
-_notes(sl, "Explain masked loss carefully — this is a common viva question. The mask ensures we never train on missing labels.")
-
-
-# ── Slide 12: Ablation Matrix ────────────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 2: Ablation Study — Architecture & Optimization Sensitivity")
-
-header2 = "Experiment             Seed  Dim(d)  Layers(L)  Pooling  PosWt  Best Val Loss"
-rows2 = [
-    "★ gnn_baseline         42    128     3          Mean     No     0.2771",
-    "  gnn_depth2            42    128     2          Mean     No     0.2783",
-    "  gnn_hidden64          42     64     3          Mean     No     0.2809",
-    "  gnn_seed43            43    128     3          Mean     No     0.2820",
-    "  gnn_sum_pooling       42    128     3          Sum      No     0.3047",
-    "  gnn_pos_weighted      42    128     3          Mean     Yes    1.4557*",
-]
-findings = [
-    "Findings:",
-    "• Mean pooling >> Sum pooling (0.2771 vs 0.3047) — sum pooling introduces molecular-size variance",
-    "• 3-hop > 2-hop message passing (0.2771 vs 0.2783) — captures functional group patterns",
-    "• d=128 > d=64 (0.2771 vs 0.2809) — multi-task learning needs sufficient capacity",
-    "• Seed 42 vs 43: Δ < 0.005 — confirms optimization stability",
-    "• *Loss scale differs for pos_weighted due to class weighting factors (w ≈ 5.6–39.4)",
-]
-
-tb = _tb(sl, 0.4, 1.5, 12.5, 0.4)
-_set_para(tb.text_frame.paragraphs[0], header2, font_name="Consolas", size=12, bold=True, color=INK)
-
-tb = _tb(sl, 0.4, 1.9, 12.5, 2.5)
-tf = tb.text_frame
-tf.word_wrap = True
-for i, row in enumerate(rows2):
-    p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-    p.text = row
-    p.font.name = "Consolas"
-    p.font.size = Pt(12)
-    p.font.color.rgb = BLUE if "★" in row else TEXT
-    p.font.bold = "★" in row
-    p.space_after = Pt(3)
-
-_bullet_list(sl, 0.4, 4.2, 12.5, 3, findings, size=13)
-
-_notes(sl, "Walk through each ablation and why it matters. The key takeaway is that architecture choices are validated, not arbitrary.")
-
-
-# ── Slide 13: Final Test Evaluation ──────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Phase 2: Final Quarantined Test Evaluation (N=783)")
-
-items = [
-    "Evaluation Protocol:",
-    "  • Best validation checkpoint loaded in eval() mode — no retraining",
-    "  • Quarantined test set (783 graphs) seen for the first and only time",
-    "  • Missing labels strictly masked — 7,175 valid observations out of 9,396 possible",
-    "",
-    "Phase 2 MolecularGNN Results:",
-    "  • Macro ROC-AUC: 0.7395 ± 0.0182 (SEM), 95% CI [0.6995, 0.7795]",
-    "  • Macro PR-AUC:  0.3118 ± 0.0331 (SEM), 95% CI [0.2389, 0.3847]",
-    "  • All 12 endpoints evaluated successfully (0 excluded)",
-    "",
-    "Verification Guarantees:",
-    "  • Zero data leakage — test labels never seen during training",
-    "  • Deterministic — repeated inference yields identical predictions (Δ < 10⁻⁶)",
-    "  • 783 unique molecule IDs verified — no duplicates, no missing",
-    "  • SHA-256 checkpoint integrity verified before inference",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=14)
-
-_notes(sl, "This is the most important results slide for Phase 2. Stress the quarantine protocol and leak-free evaluation.")
-
-
-# ── Slide 14: Cross-Phase Comparison ─────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Cross-Phase Comparison: Classical ML vs Graph Neural Networks")
-
-header3 = "Phase   Model                     Input                   Macro ROC-AUC        Macro PR-AUC"
-rows3 = [
-    "P1      Logistic Regression       Morgan FP (2048)        0.6865 ± 0.0210      0.2866 ± 0.0384",
-    "P1      XGBoost                   Morgan FP + Desc        0.7456 ± 0.0175      0.3789 ± 0.0421",
-    "P1      Random Forest (Champion)  Morgan FP + Desc        0.7488 ± 0.0185      0.3891 ± 0.0442",
-    "P2      MolecularGNN (Edge-MPNN)  Raw Molecular Graphs    0.7395 ± 0.0182      0.3118 ± 0.0331",
-]
-
-tb = _tb(sl, 0.3, 1.5, 12.7, 0.4)
-_set_para(tb.text_frame.paragraphs[0], header3, font_name="Consolas", size=12, bold=True, color=INK)
-
-tb = _tb(sl, 0.3, 1.9, 12.7, 1.6)
-tf = tb.text_frame
-tf.word_wrap = True
-for i, row in enumerate(rows3):
-    p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-    p.text = row
-    p.font.name = "Consolas"
-    p.font.size = Pt(13)
-    p.font.color.rgb = TEXT
-    p.space_after = Pt(5)
-
-items2 = [
-    "Key Finding: Statistical Parity in ROC-AUC Discrimination",
-    "  • RF ROC-AUC CI: [0.7125, 0.7851] vs GNN CI: [0.6995, 0.7795] → overlapping",
-    "  • Difference (0.0093) is well within standard error (~0.018)",
-    "  • GNN achieves this WITHOUT any manual feature engineering",
-    "",
-    "PR-AUC Gap:",
-    "  • RF maintains advantage in PR-AUC (0.3891 vs 0.3118)",
-    "  • Tree ensembles create sharp orthogonal decision boundaries in sparse fingerprint space",
-    "  • GNN's continuous latent space produces smoother, less sharp probability gradients",
-]
-_bullet_list(sl, 0.6, 3.5, 12, 3.8, items2, size=14)
-
-_notes(sl, "This is THE key slide. Emphasize statistical parity. The GNN matches the champion RF without feature engineering.")
-
-
-# ── Slide 15: Endpoint-Level Analysis ────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Endpoint-Level Performance Analysis")
-
-items = [
-    "Endpoint Performance Variation:",
-    "  • Best GNN endpoint: SR-MMP (highest prevalence ~15%) — ROC-AUC ~0.85",
-    "  • Worst GNN endpoint: NR-AR (lowest prevalence ~1.5%) — ROC-AUC ~0.59",
-    "  • Strong positive correlation between endpoint prevalence and both metrics",
-    "",
-    "Class Imbalance Impact:",
-    "  • Endpoints with <3% positive prevalence show degraded PR-AUC (<0.15)",
-    "  • ROC-AUC is more robust to class imbalance than PR-AUC",
-    "  • This validates using ROC-AUC as primary ranking metric for model comparison",
-    "",
-    "Interesting Patterns:",
-    "  • GNN competitive or better on endpoints where molecular topology matters most",
-    "  • RF stronger on endpoints where specific functional group fingerprint bits are discriminative",
-    "  • Both approaches complement each other — potential for future ensemble methods",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=14)
-
-_notes(sl, "Discuss endpoint-level variation. Viva tip: Be ready to explain why some endpoints are harder than others.")
-
-
-# ── Slide 16: Discussion & Limitations ───────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Discussion, Threats to Validity & Limitations")
-
-items = [
-    "Scientific Contributions:",
-    "  • Rigorous leak-free cross-paradigm benchmark on identical scaffold split",
-    "  • Demonstrated GNN statistical parity with classical baselines on Tox21",
-    "  • Systematic ablation study validating each architectural choice",
-    "  • Full reproducibility: deterministic seeds, verified checkpoints, documented pipeline",
-    "",
-    "Limitations & Threats to Validity:",
-    "  • Single-dataset scope: Results specific to Tox21; cross-dataset transfer untested",
-    "  • 2D topology only: No 3D conformational or stereoelectronic features",
-    "  • Single scaffold split: Variance across different scaffold clusterings not explored",
-    "  • Limited epochs (10): More training time may improve GNN convergence",
-    "  • Small model: Larger GNNs (attention, graph transformers) may perform better",
-    "",
-    "Reproducibility Note:",
-    "  • All code, configs, checkpoints, and results available in GitHub repository",
-    "  • Seeds, library versions, and evaluation protocols fully documented",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=14)
-
-_notes(sl, "Be honest about limitations. Reviewers and viva panels respect intellectual honesty more than inflated claims.")
-
-
-# ── Slide 17: Conclusion & Future Work ───────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl)
-_add_title_bar(sl, "Conclusion & Future Work")
-
-items = [
-    "Conclusions:",
-    "  ✓ Established rigorous classical ML baseline (RF: ROC-AUC 0.7488)",
-    "  ✓ Designed and ablated edge-aware MolecularGNN achieving ROC-AUC 0.7395",
-    "  ✓ Demonstrated statistical parity between learned graph representations",
-    "    and engineered fingerprint baselines under strict scaffold evaluation",
-    "  ✓ Validated that GNNs can match classical models without manual feature engineering",
-    "  ✓ All results on quarantined test set with zero data leakage",
-    "",
-    "Future Work:",
-    "  • 3D conformational features — incorporate spatial geometry via RDKit Allinger/ETKDG",
-    "  • Graph attention mechanisms — learn weighted neighbor importance",
-    "  • Pre-training on larger molecular databases (ZINC, ChEMBL) → fine-tune on Tox21",
-    "  • Ensemble of RF + GNN for complementary strengths",
-    "  • Extend to additional ADMET endpoints (CYP inhibition, hERG, AMES)",
-    "  • Interpretability: attention/gradient-based identification of toxic substructures",
-]
-_bullet_list(sl, 0.6, 1.4, 12, 5.8, items, size=14)
-
-_notes(sl, "Summarize the three key contributions. Future work should sound realistic and grounded.")
-
-
-# ── Slide 18: Q&A / Thank You ────────────────────────────────────────────────
-
-sl = prs.slides.add_slide(prs.slide_layouts[6])
-_add_bg(sl, INK)
-
-tb = _tb(sl, 1, 2.0, 11.3, 1.5)
-_set_para(tb.text_frame.paragraphs[0],
-          "Thank You",
-          font_name=HEAD_FONT, size=48, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
-
-tb = _tb(sl, 1, 3.5, 11.3, 1.0)
-_set_para(tb.text_frame.paragraphs[0],
-          "Questions & Discussion",
-          size=28, color=RGBColor(0xA0, 0xC0, 0xE0), align=PP_ALIGN.CENTER)
-
-tb = _tb(sl, 1, 5.0, 11.3, 1.5)
-tf = tb.text_frame
-tf.word_wrap = True
-lines = [
-    "GitHub: github.com/shouryapratap132006/Molecular-Toxicity-Prediction",
-    "Team: Amogha • Bulbul • Shourya • Kanishka • Aditya",
-]
-for i, line in enumerate(lines):
-    p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-    p.text = line
-    p.font.name = BODY_FONT
+    p = tf.paragraphs[0]
+    p.text = "1. RIGOROUS BENCHMARK"
+    p.font.name = FONT_HEAD
     p.font.size = Pt(14)
-    p.font.color.rgb = MUTED
-    p.alignment = PP_ALIGN.CENTER
+    p.font.bold = True
+    p.font.color.rgb = COLOR_S1
+    bullets_c1 = [
+        "7,823 validated molecules curated via RDKit.",
+        "Zero-leakage Bemis-Murcko scaffold split (6,258/782/783).",
+        "Masked multi-task training with no false-negative imputation.",
+        "Full test suite: 212 tests passed."
+    ]
+    for b in bullets_c1:
+        p = tf.add_paragraph()
+        p.text = f"• {b}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_LIGHT
+        p.space_before = Pt(6)
 
-_notes(sl, "Open the floor for questions. Be prepared for questions about: scaffold splitting, missing label handling, GNN vs RF tradeoffs, and future work.")
+    c2 = s20.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(4.85), Inches(1.9), Inches(3.6), Inches(4.8))
+    c2.fill.solid()
+    c2.fill.fore_color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+    c2.line.color.rgb = COLOR_S2
+    c2.line.width = Pt(1.5)
+    tb = s20.shapes.add_textbox(Inches(5.05), Inches(2.1), Inches(3.2), Inches(4.4))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    p = tf.paragraphs[0]
+    p.text = "2. PARITY ACHIEVED"
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(14)
+    p.font.bold = True
+    p.font.color.rgb = COLOR_S2
+    bullets_c2 = [
+        "Phase 1 RF: 0.7488 ± 0.0185 ROC-AUC.",
+        "Phase 2 GNN: 0.7395 ± 0.0182 ROC-AUC.",
+        "Statistical parity with overlapping 95% confidence intervals.",
+        "Zero handcrafted features needed for GNN."
+    ]
+    for b in bullets_c2:
+        p = tf.add_paragraph()
+        p.text = f"• {b}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_LIGHT
+        p.space_before = Pt(6)
+
+    c3 = s20.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(8.7), Inches(1.9), Inches(3.6), Inches(4.8))
+    c3.fill.solid()
+    c3.fill.fore_color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+    c3.line.color.rgb = COLOR_S5
+    c3.line.width = Pt(1.5)
+    tb = s20.shapes.add_textbox(Inches(8.9), Inches(2.1), Inches(3.2), Inches(4.4))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    p = tf.paragraphs[0]
+    p.text = "3. FUTURE HORIZONS"
+    p.font.name = FONT_HEAD
+    p.font.size = Pt(14)
+    p.font.bold = True
+    p.font.color.rgb = COLOR_S5
+    bullets_c3 = [
+        "3D Equivariant GNNs (EGNN/SchNet) incorporating spatial bond lengths.",
+        "Self-supervised pre-training on ChEMBL/ZINC (2M+ molecules).",
+        "Ensemble of Random Forest + GNN for complementary feature synergy.",
+        "Open for Faculty Questions."
+    ]
+    for b in bullets_c3:
+        p = tf.add_paragraph()
+        p.text = f"• {b}"
+        p.font.name = FONT_BODY
+        p.font.size = Pt(12)
+        p.font.color.rgb = TEXT_LIGHT
+        p.space_before = Pt(6)
+
+    add_notes(s20, "Conclude the presentation. Thank the viva committee and faculty. Open the floor for questions, pointing to the viva defense guide for deep technical answers.")
+
+    prs.save(str(OUT_PATH))
+    print(f"Generated {OUT_PATH} successfully! ({len(prs.slides)} slides)")
 
 
-# ── Save ─────────────────────────────────────────────────────────────────────
-
-OUT.parent.mkdir(parents=True, exist_ok=True)
-prs.save(str(OUT))
-print(f"Saved {OUT} ({OUT.stat().st_size / 1024:.1f} KiB, {len(prs.slides)} slides)")
+if __name__ == "__main__":
+    create_deck()
